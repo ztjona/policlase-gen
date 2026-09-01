@@ -1,0 +1,159 @@
+# policlase — banco de ítems (borrador de esquema v1)
+# Traducción de exam_example.json con los cambios de esquema acordados.
+# Cargar SIEMPRE con ruamel.yaml en modo YAML 1.2 (ver notas al final).
+
+schema: policlase.item/v1
+
+meta:
+  locale: es-EC                 # TODO: confirmar (es-CO / es-MX / ...) y zona horaria
+  decimal_separator: both    # acepta "4.23" y "4,23" en las respuestas
+
+items:
+  # ─────────────────────────────────────────────────────────────────────────
+  - id: U01-biseccion
+    title: Bisección — raíces de una función
+    tags: [unidad-01, raices, biseccion]
+    difficulty: 2
+    points: 10
+
+    # El generador corre EN TU PC (`policlase build`), no en el servidor.
+    generator:
+      file: generators/biseccion.py
+      entry: generate
+      seeds: 1..200          # variantes materializadas y subidas a la plataforma
+
+    # Declaradas => el validador falla si el generador no devuelve exactamente esto.
+    # `private` nunca se serializa hacia el cliente del estudiante.
+    variables:
+      public:  [fcn, range_1, range_2, range_invalid]
+      private: [root_1, root_2, root_3, range_1_count, range_2_count]
+
+    stem: |
+      Aplique el método de la bisección para encontrar **todas** las raíces de
+      $f(x) = {{ fcn }}$ con una tolerancia de $0.01$.
+
+    questions:
+      - id: q1
+        type: numeric_list
+        points: 4
+        prompt: |
+          ¿Cuáles son las raíces de la ecuación dada?
+          Escríbalas en orden ascendente; si alguna no existe, escriba `NaN`.
+        shape: [1, 3]
+        solution: ["{{ root_1 }}", "{{ root_2 }}", "{{ root_3 }}"]
+        grading:
+          rtol: 0.01
+          atol: 1.0e-9
+          order: ascending        # la regla que antes vivía solo en la prosa
+          partial: per_cell       # 4/3 de punto por celda correcta
+          nan_aliases: ["NaN", "nan", "no existe", "-"]
+
+      - id: q2
+        type: numeric
+        points: 1
+        # OJO: en el original la respuesta devolvía el VALOR de la raíz, no el conteo.
+        prompt: "¿Cuántas raíces existen en el rango ${{ range_1 | interval }}$?"
+        solution: "{{ range_1_count }}"
+        grading: { integer: true }
+
+      - id: q3
+        type: numeric
+        points: 1
+        prompt: "¿Cuántas raíces existen en el rango ${{ range_2 | interval }}$?"
+        solution: "{{ range_2_count }}"
+        grading: { integer: true }
+
+      - id: q4
+        type: choice
+        points: 2
+        prompt: "¿Qué tipo de solución se obtiene en el rango ${{ range_invalid | interval }}$?"
+        options:
+          - { text: "Rango con signos iguales, no hay solución.", correct: true }
+          - { text: "Solución única." }
+          - { text: "Infinitas soluciones, función periódica." }
+          - { text: "Error de convergencia, máximas iteraciones alcanzadas." }
+        none_of_the_above: true    # caso especial: se añade y se ancla al final
+        sample: { distractors: 3, shuffle: seeded }
+
+        follow_ups:
+          - id: q4a
+            type: open
+            points: 2
+            prompt: "¿Qué método de búsqueda de raíces es más adecuado para este rango y por qué?"
+            grading:
+              mode: ai
+              review: required     # nunca se publica sin tu aprobación
+              reference: |
+                Se espera que note que $f(a)$ y $f(b)$ tienen el mismo signo, por lo
+                que el teorema de Bolzano no garantiza una raíz en el intervalo, y
+                que proponga un método abierto (Newton-Raphson, secante) o una
+                subdivisión previa del intervalo.
+              rubric:
+                - { criterion: "Identifica que no hay cambio de signo", points: 1 }
+                - { criterion: "Propone un método alternativo y lo justifica", points: 1 }
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # AÑADIDO (no está en el JSON original): ejemplo del tipo `expression`, que es
+  # el que necesita evaluación simbólica EN EL SERVIDOR al momento de calificar.
+  - id: U02-derivada
+    title: Derivada de un producto
+    tags: [unidad-02, derivadas]
+    points: 3
+    generator: { file: generators/derivadas.py, entry: generate, seeds: 1..200 }
+    variables:
+      public:  [f_latex]
+      private: [df_latex]
+
+    stem: "Sea $f(x) = {{ f_latex }}$."
+    questions:
+      - id: q1
+        type: expression
+        points: 3
+        prompt: "Escriba $f'(x)$."
+        solution: "{{ df_latex }}"
+        grading:
+          vars: [x]                    # símbolos permitidos
+          domain: { x: [-3, 3] }       # dominio de muestreo
+          sample_points: 20            # equivalencia numérica en 20 puntos
+          rtol: 1.0e-6
+          allow: [sin, cos, tan, exp, ln, log, sqrt, abs, pi, e]
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Tipos añadidos en v1: multi_choice y true_false.
+  - id: U01-conceptos
+    title: Bisección — conceptos
+    tags: [unidad-01, biseccion, teoria]
+    points: 7
+    # Sin `generator`: ítem no aleatorizado, apto también para lección.
+
+    stem: "Responda sobre el método de la bisección."
+    questions:
+      - id: q1
+        type: multi_choice
+        points: 3
+        prompt: "¿Cuáles de las siguientes condiciones se requieren para aplicar bisección?"
+        options:
+          - { text: "$f$ continua en $[a,b]$.", correct: true }
+          - { text: "$f(a)$ y $f(b)$ con signos opuestos.", correct: true }
+          - { text: "$f$ derivable en $[a,b]$." }
+          - { text: "Conocer $f'(x)$ analíticamente." }
+        grading:
+          partial: per_option    # per_option | all_or_nothing
+          penalty: 1.0           # cada marca incorrecta anula un acierto
+          floor: 0               # la pregunta nunca aporta negativo
+        sample: { shuffle: seeded }
+
+      - id: q2
+        type: true_false
+        points: 4
+        prompt: "Marque cada afirmación como verdadera o falsa."
+        statements:
+          - { text: "La bisección converge siempre que haya cambio de signo.", answer: true }
+          - { text: "Newton-Raphson garantiza convergencia global.", answer: false }
+          - { text: "La bisección tiene convergencia lineal.", answer: true }
+          - { text: "El método de la secante requiere evaluar $f'(x)$.", answer: false }
+        grading:
+          partial: per_statement  # per_statement | all_or_nothing
+          penalty: 1.0            # contra el 50% que da el azar
+          floor: 0
+        sample: { shuffle: seeded }
