@@ -299,8 +299,8 @@ servidor al momento de calificar.
 - id: q1
   type: expression
   points: 3
-  prompt: "Escriba $f'(x)$."
-  solution: "{{ df_latex }}"
+  prompt: "Sea $f(x) = {{ f_latex }}$. Escriba $f'(x)$."
+  solution: "{{ df_expr }}"     # infija plana, NO LaTeX
   grading:
     vars: [x]
     domain: { x: [-3, 3] }
@@ -308,6 +308,17 @@ servidor al momento de calificar.
     rtol: 1.0e-6
     allow: [sin, cos, tan, exp, ln, log, sqrt, abs, pi, e]
 ```
+
+**La solución es una expresión infija plana, no LaTeX.** El enunciado se muestra en LaTeX
+(`f_latex`), pero lo que el calificador compara se escribe en el mismo lenguaje que teclea el
+estudiante (`df_expr`): `3*2*x**1*sin(x) + 3*x**2*cos(x)`. Un generador que necesite ambas formas
+declara ambas variables. Comparar LaTeX con lo que teclea un estudiante exigiría un analizador de
+LaTeX, que es un problema mayor que el que resuelve.
+
+Sintaxis admitida: números, los símbolos de `vars`, `pi` y `e`, las funciones de `allow`,
+`+ - * / % ** ^` y paréntesis. **La multiplicación debe ser explícita** (`2*x`, no `2x`); escribir
+`2x` produce un mensaje que lo dice. Todo lo demás —atributos, índices, listas, comparaciones— se
+rechaza en el AST antes de evaluar nada.
 
 La comparación es por **muestreo numérico**: ambas expresiones se evalúan en veinte puntos aleatorios
 del dominio. Esto reconoce `(x-1)(x+1)` y `x^2-1` como equivalentes sin simplificación simbólica
@@ -446,6 +457,31 @@ veinticinco exámenes completos, y permite ajustar el criterio a mitad de camino
 
 Preguntas anidadas que se muestran después de responder la de arriba. Sus `points` son propios y
 suman al total del ítem. Anidamiento máximo: un nivel.
+
+### El registro de solución
+
+`build` separa cada variante en dos subárboles. El estudiante recibe `public`; el calificador
+recibe `solutions`:
+
+```json
+{
+  "seed": 3,
+  "fingerprint": "a1b2c3d4e5f60718",
+  "public":  { "stem": "...", "questions": [ { "id": "q4", "options": [ {"key": "o0_4c9c5ff6", "text": "..."} ] } ] },
+  "solutions": { "q1": { "solution": [-1.0, 1.0, null] },
+                 "q4": { "correct": ["o3_cbc5ab1d"] } }
+}
+```
+
+Dos propiedades que conviene no perder de vista:
+
+* **La solución conserva su tipo, no su texto.** `"{{ root_3 }}"` se resuelve al valor `null`, no a
+  la cadena `\mathrm{NaN}`: las soluciones se comparan, no se muestran, y una solución renderizada
+  como LaTeX no la puede reanalizar ni su propio calificador.
+* **La mezcla de opciones se materializa al construir.** Las opciones guardadas, con su `key`
+  estable, son literalmente las que vio el estudiante. El calificador usa ese registro y nunca
+  recalcula la presentación desde el ítem fuente; si lo hiciera, reordenar las opciones en octubre
+  cambiaría cuál era la correcta en un examen de septiembre.
 
 ---
 
