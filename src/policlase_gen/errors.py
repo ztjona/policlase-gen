@@ -52,6 +52,11 @@ CATALOG: dict[str, tuple[Severity, str]] = {
     "E060": (Severity.ERROR, "Matemáticas inválidas en {where}: {detail}"),
     "W070": (Severity.WARNING, "none_of_the_above nunca es correcta; los estudiantes aprenden a descartarla"),
     "W071": (Severity.WARNING, "multi_choice con partial 'per_option' y penalty {penalty}: marcar todas las opciones da nota completa"),
+    "E080": (Severity.ERROR, "La diapositiva {number} debe tener exactamente una de 'markdown' o 'item'"),
+    "E081": (Severity.ERROR, "Un ítem de clase en vivo lleva exactamente una pregunta, sin follow_ups; tiene {count}"),
+    "E082": (Severity.ERROR, "El tipo {type!r} no se puede responder en vivo (use choice, multi_choice, true_false, numeric o text)"),
+    "E083": (Severity.ERROR, "La diapositiva {number} usa aleatorización; en clase en vivo todos ven lo mismo, sin generador ni marcadores"),
+    "E084": (Severity.ERROR, "time_limit_s inválido ({value}): debe estar entre {low} y {high} segundos"),
 }
 
 

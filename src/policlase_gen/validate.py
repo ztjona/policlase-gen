@@ -62,6 +62,11 @@ def validate_file(
     except loader.LoadError as exc:
         report.add("E060", where="el archivo", detail=exc.detail, file=str(path), line=exc.line)
         return report
+
+    from .deck import is_deck, validate_deck      # diferido: deck importa este módulo
+    if is_deck(document):
+        return validate_deck(document, path=path, report=report)
+
     return validate_document(
         document, path=path, report=report, run_generators=run_generators,
         enrolled=enrolled, max_seeds=max_seeds,
@@ -78,7 +83,7 @@ def validate_document(
     max_seeds: int | None = None,
     seen_ids: dict[str, str] | None = None,
 ) -> Report:
-    report = report or Report()
+    report = report if report is not None else Report()
     path = Path(path)
     seen_ids = seen_ids if seen_ids is not None else {}
     here = {"file": str(path)}

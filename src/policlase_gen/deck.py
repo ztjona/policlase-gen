@@ -1,0 +1,189 @@
+"""Presentaciones para clases en vivo (docs/schema.md §9).
+
+Una presentación es una secuencia de diapositivas que el profesor avanza; algunas son de
+contenido (markdown con matemáticas) y otras son preguntas que los estudiantes responden desde
+su dispositivo. Las preguntas son ítems ordinarios del esquema v1, sin generador: en clase
+todos ven lo mismo al mismo tiempo, y así los sondeos entran en la misma analítica de ítems.
+
+    schema: policlase.deck/v1
+    title: "Bisección — clase 1"
+    defaults: { time_limit_s: 30 }
+    slides:
+      - markdown: |
+          # El teorema de Bolzano
+      - item:
+          id: L01-bolzano
+          points: 1
+          questions:
+            - { id: q1, type: choice, points: 1, prompt: "...", options: [...] }
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from . import build, loader, template
+from .errors import Report
+
+DECK_VERSIONS = {"policlase.deck/v1"}
+DECK_KEYS = {"schema", "title", "defaults", "slides", "meta"}
+SLIDE_KEYS = {"markdown", "item", "notes"}
+DEFAULT_KEYS = {"time_limit_s"}
+
+#: Tipos que se pueden responder en vivo con un toque o un número. `open` y `expression`
+#: quedan fuera: exigen escribir con calma, que no es lo que pide una pregunta cronometrada.
+LIVE_TYPES = {"choice", "multi_choice", "true_false", "numeric", "text"}
+
+DEFAULT_TIME_LIMIT_S = 30
+MIN_TIME_LIMIT_S, MAX_TIME_LIMIT_S = 5, 600
+
+
+def is_deck(document: Any) -> bool:
+    return isinstance(document, dict) and str(document.get("schema", "")).startswith("policlase.deck/")
+
+
+def validate_deck(document: Any, *, path: Path | str = "<memoria>", report: Report | None = None) -> Report:
+    # Import diferido: validate importa este módulo para despachar por tipo de documento.
+    from .validate import _validate_item
+
+    report = report if report is not None else Report()
+    path = Path(path)
+    here = {"file": str(path)}
+
+    if not isinstance(document, dict):
+        report.add("E004", key="<raíz>", expected="mapping", found=type(document).__name__, **here)
+        return report
+
+    for key in set(document) - DECK_KEYS:
+        report.add("E001", key=key, line=loader.line_of(document, key), **here)
+
+    version = document.get("schema")
+    if version not in DECK_VERSIONS:
+        report.add("E002", found=version, line=loader.line_of(document, "schema"), **here)
+
+    if not str(document.get("title") or "").strip():
+        report.add("E003", key="title", **here)
+
+    defaults = document.get("defaults") or {}
+    if isinstance(defaults, dict):
+        for key in set(defaults) - DEFAULT_KEYS:
+            report.add("E001", key=f"defaults.{key}", line=loader.line_of(defaults, key), **here)
+        _check_time_limit(defaults.get("time_limit_s"), report, here)
+
+    slides = document.get("slides")
+    if not isinstance(slides, list) or not slides:
+        report.add("E004", key="slides", expected="lista no vacía",
+                   found=type(slides).__name__, **here)
+        return report
+
+    seen_ids: dict[str, str] = {}
+    for number, slide in enumerate(slides, start=1):
+        at = {**here, "line": loader.line_of(slides, number - 1)}
+        if not isinstance(slide, dict):
+            report.add("E080", number=number, **at)
+            continue
+        for key in set(slide) - SLIDE_KEYS:
+            report.add("E001", key=f"slides[{number}].{key}", **at)
+
+        has_markdown, has_item = "markdown" in slide, "item" in slide
+        if has_markdown == has_item:
+            report.add("E080", number=number, **at)
+            continue
+
+        if has_markdown:
+            problem = template.unbalanced_math(str(slide["markdown"] or ""))
+            if problem:
+                report.add("E060", where=f"diapositiva {number}", detail=problem, **at)
+            if template.placeholders(str(slide["markdown"] or "")):
+                report.add("E083", number=number, **at)
+            continue
+
+        item = slide["item"]
+        if not isinstance(item, dict):
+            report.add("E004", key=f"slides[{number}].item", expected="mapping",
+                       found=type(item).__name__, **at)
+            continue
+
+        _validate_item(
+            item, report=report, path=path, root=path.parent, seen_ids=seen_ids,
+            run_generators=False, enrolled=0, max_seeds=None,
+        )
+        item_at = {**here, "item_id": item.get("id"), "line": loader.line_of(item)}
+
+        if item.get("generator") or item.get("variables"):
+            report.add("E083", number=number, **item_at)
+
+        questions = item.get("questions") or []
+        if len(questions) != 1:
+            report.add("E081", count=len(questions), **item_at)
+        for question in questions:
+            if isinstance(question, dict) and question.get("type") not in LIVE_TYPES:
+                report.add("E082", type=question.get("type"),
+                           **{**item_at, "question_id": question.get("id")})
+            if isinstance(question, dict) and question.get("follow_ups"):
+                report.add("E081", count=1 + len(question["follow_ups"]), **item_at)
+
+        _check_time_limit((item.get("lecture") or {}).get("time_limit_s"), report, item_at)
+
+    return report
+
+
+def _check_time_limit(value: Any, report: Report, at: dict) -> None:
+    if value is None:
+        return
+    if isinstance(value, bool) or not isinstance(value, (int, float)) \
+            or not MIN_TIME_LIMIT_S <= value <= MAX_TIME_LIMIT_S:
+        report.add("E084", value=value, low=MIN_TIME_LIMIT_S, high=MAX_TIME_LIMIT_S, **at)
+
+
+def compile_deck(document: dict) -> dict:
+    """Convierte una presentación válida en la forma que usa la plataforma en vivo.
+
+    Cada pregunta sale con su presentación materializada —claves de opción estables— y su
+    registro de solución aparte, igual que una variante de `build`. La plataforma copia este
+    resultado al iniciar una sesión, así que editar la presentación después no altera una
+    clase ya dictada.
+    """
+    defaults = document.get("defaults") or {}
+    default_limit = int(defaults.get("time_limit_s") or DEFAULT_TIME_LIMIT_S)
+    slides = []
+
+    for slide in document.get("slides") or []:
+        if "markdown" in slide:
+            slides.append({"kind": "content", "markdown": str(slide["markdown"] or ""),
+                           "notes": str(slide.get("notes") or "")})
+            continue
+
+        item = slide["item"]
+        rendered = build.render_item(item, {}, seed=0)
+        question = rendered["public"]["questions"][0]
+        record = rendered["solutions"].get(question["id"], {})
+        lecture = item.get("lecture") or {}
+        slides.append({
+            "kind": "question",
+            "item_id": str(item.get("id")),
+            "item_version": build.item_version(item),
+            "stem": rendered["public"].get("stem", ""),
+            "question": question,
+            "solution": record,
+            "points": float(question.get("points") or 0),
+            "time_limit_s": int(lecture.get("time_limit_s") or default_limit),
+            "notes": str(slide.get("notes") or ""),
+        })
+
+    return {"schema": "policlase.deck.compiled/v1",
+            "title": str(document.get("title") or ""),
+            "slides": loader.plain(slides)}
+
+
+def load_deck_text(text: str) -> tuple[Any, Report]:
+    """Carga y valida desde texto; devuelve el documento (o None) y el reporte."""
+    report = Report()
+    try:
+        document = loader.load_text(text, "<presentación>")
+    except loader.LoadError as exc:
+        report.add("E060", where="el archivo", detail=exc.detail, line=exc.line)
+        return None, report
+    validate_deck(document, path="<presentación>", report=report)
+    return document, report

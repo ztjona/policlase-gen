@@ -342,3 +342,15 @@ items:
         grading: { rtol: 0.01 }
 """)
     assert "E004" in {d.code for d in validate_document(document, run_generators=False)}
+
+
+def test_un_reporte_vacio_no_se_descarta(tmp_path):
+    """Un Report vacío es falso (define __len__); `report or Report()` lo reemplazaba y los
+    diagnósticos se perdían: `policlase build` nunca podía contar sus errores."""
+    total = Report()
+    body = "def generate(seed):\n    raise RuntimeError('boom')\n"
+    build.build_item(
+        {"id": "x", "points": 0, "generator": {"file": "g.py", "seeds": "1..2"}, "questions": []},
+        path=write_generator(tmp_path, body).parent / "item.yaml", report=total,
+    )
+    assert [d.code for d in total].count("E026") == 2

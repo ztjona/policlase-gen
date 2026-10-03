@@ -38,6 +38,7 @@ archivo, línea, ítem y —cuando aplica— la semilla que reprodujo el fallo, 
 - [`docs/schema.md`](docs/schema.md) — referencia normativa del formato y catálogo de diagnósticos.
 - [`examples/biseccion/`](examples/biseccion/) — dos ítems generados y uno de lección, con sus
   generadores.
+- [`examples/clase-en-vivo/`](examples/clase-en-vivo/) — una presentación para clase en vivo.
 
 ## Estado
 

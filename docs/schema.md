@@ -18,7 +18,7 @@ generador sembrado y las reglas de calificación que la plataforma aplica sobre 
 6. [Lenguaje de plantillas](#6-lenguaje-de-plantillas)
 7. [Contrato del generador](#7-contrato-del-generador)
 8. [Tipos de pregunta](#8-tipos-de-pregunta)
-9. [Ítems de lección](#9-ítems-de-lección)
+9. [Clases en vivo: presentaciones](#9-clases-en-vivo-presentaciones)
 10. [Composición en actividades](#10-composición-en-actividades)
 11. [Catálogo de validación](#11-catálogo-de-validación)
 12. [Versionado](#12-versionado)
@@ -485,32 +485,67 @@ Dos propiedades que conviene no perder de vista:
 
 ---
 
-## 9. Ítems de lección
+## 9. Clases en vivo: presentaciones
 
-Las diapositivas interactivas —el profesor avanza, los estudiantes responden desde su dispositivo—
-usan preguntas predefinidas, sin aleatorización. En el esquema eso es simplemente un ítem **sin
-bloque `generator`** y sin `variables`.
+Una clase en vivo es una **presentación**: una secuencia de diapositivas que el docente avanza desde
+el proyector, algunas de contenido y otras con una pregunta que los estudiantes responden desde su
+teléfono. Es un documento aparte, con su propio identificador de esquema:
 
 ```yaml
-- id: L03-convergencia
-  title: Sondeo en clase — convergencia
-  tags: [unidad-01, biseccion]
-  points: 1
-  lecture: { time_limit_s: 30, show_results: after_close }
-  questions:
-    - id: q1
-      type: choice
+schema: policlase.deck/v1
+title: "Bisección — clase 1"
+defaults: { time_limit_s: 30 }
+
+slides:
+  - markdown: |
+      # El teorema de Bolzano
+      Si $f$ es continua en $[a,b]$ y $f(a)\,f(b) < 0$, existe $c$ con $f(c) = 0$.
+    notes: "Solo las ve el docente en el proyector."
+
+  - item:
+      id: L01-bolzano
+      tags: [unidad-01, biseccion]
       points: 1
-      prompt: "¿Qué garantiza el teorema de Bolzano?"
-      options:
-        - { text: "Existe al menos una raíz en el intervalo.", correct: true }
-        - { text: "La raíz es única." }
-        - { text: "El método converge en menos de 10 iteraciones." }
+      lecture: { time_limit_s: 20 }
+      questions:
+        - id: q1
+          type: choice
+          points: 1
+          prompt: "¿Qué garantiza el teorema de Bolzano?"
+          options:
+            - { text: "Existe al menos una raíz en el intervalo.", correct: true }
+            - { text: "La raíz es única." }
 ```
 
-Reutilizar el mismo esquema tiene una consecuencia que vale más que el ahorro de código: los sondeos
-de clase entran en la analítica de ítems junto con todo lo demás, con las mismas etiquetas. Las notas
-de estos ítems alimentan la categoría de participación.
+| Campo | Tipo | | Descripción |
+|---|---|---|---|
+| `schema` | string | **requerido** | `policlase.deck/v1`. |
+| `title` | string | **requerido** | Título que ven docente y estudiantes. |
+| `defaults.time_limit_s` | integer 5–600 | `30` | Tiempo por pregunta si el ítem no declara otro. |
+| `slides` | array | **requerido** | Cada diapositiva tiene **exactamente una** de `markdown` o `item` (`E080`). |
+| `slides[].markdown` | string | — | Contenido: markdown con matemáticas. |
+| `slides[].item` | item | — | Un ítem ordinario del esquema v1, con las restricciones de abajo. |
+| `slides[].notes` | string | opcional | Notas para el docente. |
+| `item.lecture.time_limit_s` | integer 5–600 | opcional | Tiempo de esa pregunta (`E084` fuera de rango). |
+
+Restricciones de un ítem en vivo, porque en clase todos ven lo mismo al mismo tiempo:
+
+- **Una sola pregunta, sin `follow_ups`** (`E081`): cada diapositiva es un momento de la clase.
+- **Sin aleatorización** (`E083`): ni `generator`, ni `variables`, ni marcadores `{{ }}`.
+- **Tipos respondibles con un toque o un número** (`E082`): `choice`, `multi_choice`,
+  `true_false`, `numeric` y `text`. `open` y `expression` exigen escribir con calma, que no es lo que
+  pide una pregunta cronometrada.
+
+Todos los demás errores del ítem —`E043`, `E050`, etc.— se siguen reportando igual. Y reutilizar el
+esquema tiene una consecuencia que vale más que el ahorro de código: los sondeos de clase entran en
+la analítica de ítems junto con todo lo demás, con las mismas etiquetas. Sus notas alimentan la
+categoría de participación.
+
+**Al iniciar una clase, la plataforma copia la presentación compilada.** Editarla después no altera
+lo que se vio ni cómo se calificó una clase ya dictada — la misma inmutabilidad de la capa 2.
+
+`policlase validate` reconoce las presentaciones por su campo `schema` y las valida igual que los
+ítems.
 
 ---
 
@@ -575,6 +610,11 @@ iteración local. Los códigos `I` son informativos y nunca bloquean.
 | `E060` | error | KaTeX no pudo analizar una expresión, o hay `$` sin cerrar. |
 | `W070` | aviso | `none_of_the_above` nunca es correcta en ninguna variante. |
 | `W071` | aviso | `multi_choice` con `partial: per_option` y `penalty` &lt; 1.0. |
+| `E080` | error | Diapositiva sin `markdown` ni `item`, o con ambos. |
+| `E081` | error | Ítem en vivo con más de una pregunta o con `follow_ups`. |
+| `E082` | error | Tipo de pregunta no respondible en vivo. |
+| `E083` | error | Aleatorización en una presentación (generador, variables o marcadores). |
+| `E084` | error | `time_limit_s` fuera de 5–600 segundos. |
 
 Cada mensaje cita archivo, línea, `id` del ítem y, cuando aplica, la semilla que reprodujo el fallo
 —de modo que `policlase build --seed 47` lo reproduce de inmediato.

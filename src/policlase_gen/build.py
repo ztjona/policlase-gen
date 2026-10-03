@@ -154,7 +154,7 @@ def build_item(
     Un ítem sin ``generator`` —una pregunta de lección, por ejemplo— produce una única
     variante con la semilla 0 y sin variables.
     """
-    report = report or Report()
+    report = report if report is not None else Report()
     root = root or find_course_root(path)
     item_id = str(item.get("id"))
     at = {"file": str(path), "item_id": item_id}
@@ -228,7 +228,7 @@ def build_file(
     max_seeds: int | None = None,
 ) -> list[BuiltItem]:
     path = Path(path)
-    report = report or Report()
+    report = report if report is not None else Report()
     document = loader.load_file(path)
     root = find_course_root(path)
 
