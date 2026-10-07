@@ -16,6 +16,7 @@ from typing import Any
 
 from . import choices, expression as expr, numbers
 from .result import Result
+from ..points import question_points
 
 __all__ = ["Result", "grade", "GRADERS", "choices", "numbers", "expr"]
 
@@ -32,7 +33,7 @@ def grade(
 ) -> Result:
     """Califica una respuesta y devuelve el resultado escalado a los puntos de la pregunta."""
     kind = question.get("type")
-    points = float(question.get("points", 0) or 0)
+    points = question_points(question)
 
     if solution is None and "solution" in question:
         solution = question["solution"]

@@ -50,6 +50,7 @@ CATALOG: dict[str, tuple[Severity, str]] = {
     "E048": (Severity.ERROR, "multi_choice requiere al menos una opción correcta"),
     "E050": (Severity.ERROR, "Los puntos de las preguntas suman {found}, el ítem declara {expected}"),
     "E060": (Severity.ERROR, "Matemáticas inválidas en {where}: {detail}"),
+    "W061": (Severity.WARNING, "Comillas dobles: {sequences} dentro de las matemáticas se leyó como escape de YAML y se corrigió; escriba el LaTeX entre comillas simples"),
     "W070": (Severity.WARNING, "none_of_the_above nunca es correcta; los estudiantes aprenden a descartarla"),
     "W071": (Severity.WARNING, "multi_choice con partial 'per_option' y penalty {penalty}: marcar todas las opciones da nota completa"),
     "E080": (Severity.ERROR, "La diapositiva {number} debe tener exactamente una de 'markdown' o 'item'"),
@@ -57,6 +58,7 @@ CATALOG: dict[str, tuple[Severity, str]] = {
     "E082": (Severity.ERROR, "El tipo {type!r} no se puede responder en vivo (use choice, multi_choice, true_false, numeric o text)"),
     "E083": (Severity.ERROR, "La diapositiva {number} usa aleatorización; en clase en vivo todos ven lo mismo, sin generador ni marcadores"),
     "E084": (Severity.ERROR, "time_limit_s inválido ({value}): debe estar entre {low} y {high} segundos"),
+    "E085": (Severity.ERROR, "'{key}' debe ser true o false; tiene {found!r}"),
 }
 
 

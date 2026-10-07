@@ -25,10 +25,11 @@ from typing import Any
 
 from . import build, loader, template
 from .errors import Report
+from .points import question_points
 
 DECK_VERSIONS = {"policlase.deck/v1"}
-DECK_KEYS = {"schema", "title", "defaults", "slides", "meta"}
-SLIDE_KEYS = {"markdown", "item", "notes"}
+DECK_KEYS = {"schema", "title", "defaults", "slides", "meta", "feedback", "speed_bonus"}
+SLIDE_KEYS = {"markdown", "item", "notes", "hidden"}
 DEFAULT_KEYS = {"time_limit_s"}
 
 #: Tipos que se pueden responder en vivo con un toque o un número. `open` y `expression`
@@ -65,6 +66,10 @@ def validate_deck(document: Any, *, path: Path | str = "<memoria>", report: Repo
     if not str(document.get("title") or "").strip():
         report.add("E003", key="title", **here)
 
+    for flag in ("feedback", "speed_bonus"):
+        if flag in document and not isinstance(document[flag], bool):
+            report.add("E085", key=flag, found=document[flag], line=loader.line_of(document, flag), **here)
+
     defaults = document.get("defaults") or {}
     if isinstance(defaults, dict):
         for key in set(defaults) - DEFAULT_KEYS:
@@ -85,6 +90,8 @@ def validate_deck(document: Any, *, path: Path | str = "<memoria>", report: Repo
             continue
         for key in set(slide) - SLIDE_KEYS:
             report.add("E001", key=f"slides[{number}].{key}", **at)
+        if "hidden" in slide and not isinstance(slide["hidden"], bool):
+            report.add("E085", key=f"slides[{number}].hidden", found=slide["hidden"], **at)
 
         has_markdown, has_item = "markdown" in slide, "item" in slide
         if has_markdown == has_item:
@@ -150,9 +157,10 @@ def compile_deck(document: dict) -> dict:
     slides = []
 
     for slide in document.get("slides") or []:
+        hidden = slide.get("hidden") is True
         if "markdown" in slide:
             slides.append({"kind": "content", "markdown": str(slide["markdown"] or ""),
-                           "notes": str(slide.get("notes") or "")})
+                           "notes": str(slide.get("notes") or ""), "hidden": hidden})
             continue
 
         item = slide["item"]
@@ -167,23 +175,33 @@ def compile_deck(document: dict) -> dict:
             "stem": rendered["public"].get("stem", ""),
             "question": question,
             "solution": record,
-            "points": float(question.get("points") or 0),
+            "points": question_points(question),
             "time_limit_s": int(lecture.get("time_limit_s") or default_limit),
             "notes": str(slide.get("notes") or ""),
+            "hidden": hidden,
         })
+
+    # Retroalimentación anónima de la clase: siempre al final, salvo `feedback: false`. Se
+    # compila igual (oculta) para que el editor pueda mostrarla y reactivarla.
+    slides.append({"kind": "feedback", "notes": "", "hidden": document.get("feedback") is False})
 
     return {"schema": "policlase.deck.compiled/v1",
             "title": str(document.get("title") or ""),
+            # Bono por rapidez en el marcador de la clase (no en la nota): activo salvo `false`.
+            "speed_bonus": document.get("speed_bonus") is not False,
             "slides": loader.plain(slides)}
 
 
 def load_deck_text(text: str) -> tuple[Any, Report]:
     """Carga y valida desde texto; devuelve el documento (o None) y el reporte."""
     report = Report()
+    repairs: list[dict] = []
     try:
-        document = loader.load_text(text, "<presentación>")
+        document = loader.load_text(text, "<presentación>", repairs)
     except loader.LoadError as exc:
         report.add("E060", where="el archivo", detail=exc.detail, line=exc.line)
         return None, report
+    for fix in repairs:
+        report.add("W061", sequences=", ".join(fix["sequences"]), line=fix["line"])
     validate_deck(document, path="<presentación>", report=report)
     return document, report

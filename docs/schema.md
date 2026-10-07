@@ -111,6 +111,14 @@ LaTeX se escriba literal, sin escapar barras invertidas.
 
 ---
 
+### LaTeX y comillas
+
+En YAML, la barra invertida es un escape **dentro de comillas dobles**: `"$\tilde{x}$"` se lee
+como un tabulador seguido de `ilde{x}`, y `"$\sqrt{x}$"` ni siquiera carga (`\s` no es un escape
+válido). Escriba el texto con LaTeX entre **comillas simples** (`'$\tilde{x}$'`) o en un bloque
+`|`. Si de todos modos un comando quedó tragado dentro de matemáticas (`\t`ilde, `\f`rac,
+`\b`eta, `\n`abla, `\v`ec, `\r`ho…), el cargador lo restituye y avisa con `W061`.
+
 ## 4. Nivel raíz
 
 | Campo | Tipo | | Descripción |
@@ -138,7 +146,7 @@ preguntas que cuelgan de él.
 | `title` | string | opcional | Para tus listados y el panel de analítica. Nunca se muestra al estudiante durante una evaluación. |
 | `tags` | array\<string\> | opcional | Temas. Habilitan el reporte de dominio por tema y la reutilización entre semestres. |
 | `difficulty` | integer 1–5 | opcional | Tu estimación al escribirlo. La dificultad observada se calcula aparte; la diferencia es informativa. |
-| `points` | number | **requerido** | Puntos del ítem completo. Debe igualar la suma de sus preguntas (`E050`). |
+| `points` | number | suma de las preguntas | Puntos del ítem completo. Si se declara, debe igualar la suma de sus preguntas (`E050`). |
 | `generator` | object | opcional | Se omite en ítems sin aleatorización. Ver [sección 7](#7-contrato-del-generador). |
 | `variables` | object | condicional | Requerido cuando hay `generator`. Dos listas: `public` y `private`. |
 | `stem` | string (markdown) | opcional | Enunciado común mostrado encima de todas las preguntas. Admite marcadores. |
@@ -246,7 +254,7 @@ suele indicar un generador más pobre de lo que se pretendía.
 
 ## 8. Tipos de pregunta
 
-Toda pregunta tiene `id`, `type`, `points`, `prompt` y, salvo `open`, una `solution`. El bloque
+Toda pregunta tiene `id`, `type`, `prompt`, `points` (1 si se omite) y, salvo `open`, una `solution`. El bloque
 `grading` cambia según el tipo.
 
 ### `numeric`
@@ -526,6 +534,9 @@ slides:
 | `slides[].markdown` | string | — | Contenido: markdown con matemáticas. |
 | `slides[].item` | item | — | Un ítem ordinario del esquema v1, con las restricciones de abajo. |
 | `slides[].notes` | string | opcional | Notas para el docente. |
+| `slides[].hidden` | boolean | `false` | La diapositiva queda en el archivo pero no se presenta (`E085` si no es booleano). |
+| `speed_bonus` | boolean | `true` | Bono por rapidez en el **marcador** de la clase: una respuesta correcta vale entre el 50 % (al final del tiempo) y el 100 % (al instante) de sus puntos de juego. La **nota** de participación no cambia: cuenta solo si se acertó. |
+| `feedback` | boolean | `true` | Al final de cada clase se agrega una pregunta de retroalimentación **anónima** (valoración de 1 a 5 y comentario opcional). `false` la desactiva. |
 | `item.lecture.time_limit_s` | integer 5–600 | opcional | Tiempo de esa pregunta (`E084` fuera de rango). |
 
 Restricciones de un ítem en vivo, porque en clase todos ven lo mismo al mismo tiempo:
@@ -535,6 +546,14 @@ Restricciones de un ítem en vivo, porque en clase todos ven lo mismo al mismo t
 - **Tipos respondibles con un toque o un número** (`E082`): `choice`, `multi_choice`,
   `true_false`, `numeric` y `text`. `open` y `expression` exigen escribir con calma, que no es lo que
   pide una pregunta cronometrada.
+
+La retroalimentación no es un ítem: no da puntos ni entra en el marcador, y la plataforma la guarda
+sin vínculo con el estudiante. El docente ve el resumen solo cuando hay al menos tres respuestas,
+para que en un grupo pequeño nadie pueda deducir quién escribió qué.
+
+El orden de las diapositivas y `hidden` se pueden cambiar desde el panel lateral del editor web,
+que edita solo las líneas afectadas (`policlase_gen.deck_text`): el diff en git queda igual que si
+se hubiera hecho a mano.
 
 Todos los demás errores del ítem —`E043`, `E050`, etc.— se siguen reportando igual. Y reutilizar el
 esquema tiene una consecuencia que vale más que el ahorro de código: los sondeos de clase entran en
@@ -608,6 +627,7 @@ iteración local. Los códigos `I` son informativos y nunca bloquean.
 | `E048` | error | `multi_choice` sin ninguna opción correcta. |
 | `E050` | error | Los puntos de las preguntas no suman los del ítem. |
 | `E060` | error | KaTeX no pudo analizar una expresión, o hay `$` sin cerrar. |
+| `W061` | aviso | LaTeX entre comillas dobles: un escape de YAML se tragó un comando; se corrigió. |
 | `W070` | aviso | `none_of_the_above` nunca es correcta en ninguna variante. |
 | `W071` | aviso | `multi_choice` con `partial: per_option` y `penalty` &lt; 1.0. |
 | `E080` | error | Diapositiva sin `markdown` ni `item`, o con ambos. |
@@ -615,6 +635,7 @@ iteración local. Los códigos `I` son informativos y nunca bloquean.
 | `E082` | error | Tipo de pregunta no respondible en vivo. |
 | `E083` | error | Aleatorización en una presentación (generador, variables o marcadores). |
 | `E084` | error | `time_limit_s` fuera de 5–600 segundos. |
+| `E085` | error | `hidden` o `feedback` no son booleanos. |
 
 Cada mensaje cita archivo, línea, `id` del ítem y, cuando aplica, la semilla que reprodujo el fallo
 —de modo que `policlase build --seed 47` lo reproduce de inmediato.

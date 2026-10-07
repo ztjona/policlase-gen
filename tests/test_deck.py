@@ -93,7 +93,8 @@ def test_compilar_y_calificar_ida_y_vuelta():
     document = loader.load_file(EXAMPLE)
     compiled = deck.compile_deck(document)
     kinds = [s["kind"] for s in compiled["slides"]]
-    assert kinds == ["content", "question", "content", "question", "question", "question", "content"]
+    assert kinds == ["content", "question", "content", "question", "question", "question", "content", "feedback"]
+    assert compiled["slides"][-1]["hidden"] is False      # retroalimentación activa por defecto
 
     first = compiled["slides"][1]
     assert first["time_limit_s"] == 20
@@ -104,3 +105,63 @@ def test_compilar_y_calificar_ida_y_vuelta():
     numeric = compiled["slides"][3]
     assert numeric["time_limit_s"] == 30                # hereda de defaults
     assert grade(numeric["question"], "10", solution=numeric["solution"]).points == 2
+
+
+def test_hidden_y_feedback():
+    source = HEAD + "  - markdown: a\n    hidden: true\n  - markdown: b\n"
+    document, report = deck.load_deck_text(source)
+    assert not report.errors
+    slides = deck.compile_deck(document)["slides"]
+    assert [s["hidden"] for s in slides] == [True, False, False]
+
+    document, _ = deck.load_deck_text(source.replace("slides:", "feedback: false\nslides:"))
+    assert deck.compile_deck(document)["slides"][-1] == {"kind": "feedback", "notes": "", "hidden": True}
+
+
+def test_E085_hidden_y_feedback_booleanos():
+    assert codes("  - markdown: a\n    hidden: si\n") == ["E085"]
+    _, report = deck.load_deck_text(HEAD.replace("slides:", "feedback: 1\nslides:") + "  - markdown: a\n")
+    assert [d.code for d in report] == ["E085"]
+
+
+def test_points_por_omision_uno():
+    source = HEAD + """  - item:
+      id: L-sin-puntos
+      questions:
+        - id: q1
+          type: choice
+          prompt: '¿?'
+          options:
+            - { text: a, correct: true }
+            - { text: b }
+"""
+    document, report = deck.load_deck_text(source)
+    assert not report.errors, [d.message for d in report]
+    question = deck.compile_deck(document)["slides"][0]
+    assert question["points"] == 1.0
+    right = question["solution"]["correct"][0]
+    assert grade(question["question"], right, solution=question["solution"]).points == 1.0
+
+
+def test_latex_entre_comillas_dobles_se_corrige_y_avisa():
+    source = HEAD + '  - item:\n      id: L-t\n      questions:\n        - id: q1\n          type: choice\n' \
+        '          prompt: "Sea $\\tilde{x} = \\frac{a}{b}$"\n          options:\n' \
+        '            - { text: "$\\beta$", correct: true }\n            - { text: \'$\\nabla f$\' }\n'
+    document, report = deck.load_deck_text(source)
+    assert [d.code for d in report] == ["W061", "W061"]
+    slide = deck.compile_deck(document)["slides"][0]
+    assert slide["question"]["prompt"] == "Sea $\\tilde{x} = \\frac{a}{b}$"
+    assert sorted(o["text"] for o in slide["question"]["options"]) == ["$\\beta$", "$\\nabla f$"]
+
+
+def test_escape_desconocido_explica_las_comillas():
+    _, report = deck.load_deck_text(HEAD + '  - markdown: "$\\sqrt{2}$"\n')
+    (diagnostic,) = list(report)
+    assert diagnostic.code == "E060" and "comillas simples" in diagnostic.message
+
+
+def test_speed_bonus():
+    document, _ = deck.load_deck_text(HEAD + "  - markdown: a\n")
+    assert deck.compile_deck(document)["speed_bonus"] is True
+    document, report = deck.load_deck_text(HEAD.replace("slides:", "speed_bonus: false\nslides:") + "  - markdown: a\n")
+    assert not report.errors and deck.compile_deck(document)["speed_bonus"] is False

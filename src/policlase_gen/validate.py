@@ -13,6 +13,7 @@ from typing import Any
 from . import generator as gen
 from . import loader, template
 from .errors import Report
+from .points import DEFAULT_POINTS
 from .grading import expression as expr
 
 SCHEMA_VERSIONS = {"policlase.item/v1"}
@@ -57,11 +58,14 @@ def validate_file(
 ) -> Report:
     path = Path(path)
     report = Report()
+    repairs: list[dict] = []
     try:
-        document = loader.load_file(path)
+        document = loader.load_file(path, repairs)
     except loader.LoadError as exc:
         report.add("E060", where="el archivo", detail=exc.detail, file=str(path), line=exc.line)
         return report
+    for fix in repairs:
+        report.add("W061", sequences=", ".join(fix["sequences"]), file=str(path), line=fix["line"])
 
     from .deck import is_deck, validate_deck      # diferido: deck importa este módulo
     if is_deck(document):
@@ -154,9 +158,8 @@ def _validate_item(item, *, report, path, root, seen_ids, run_generators, enroll
     for key in set(item) - ITEM_KEYS:
         report.add("E001", key=key, line=loader.line_of(item, key), **at)
 
-    if "points" not in item:
-        report.add("E003", key="points", line=loader.line_of(item), **at)
-    elif not isinstance(item["points"], (int, float)) or isinstance(item["points"], bool):
+    # `points` es opcional: por omisión, la suma de las preguntas (policlase_gen.points).
+    if "points" in item and (not isinstance(item["points"], (int, float)) or isinstance(item["points"], bool)):
         report.add("E004", key="points", expected="number",
                    found=type(item["points"]).__name__, line=loader.line_of(item, "points"), **at)
 
@@ -212,7 +215,7 @@ def _validate_question(question, *, report, path, item_id, seen) -> float:
         report.add("E040", type=kind, **{**at, "line": loader.line_of(question, "type")})
         kind = None
 
-    points = question.get("points")
+    points = question.get("points", DEFAULT_POINTS)            # por omisión, 1
     if not isinstance(points, (int, float)) or isinstance(points, bool):
         report.add("E004", key="points", expected="number",
                    found=type(points).__name__, **at)

@@ -20,6 +20,7 @@ from . import generator as gen
 from . import loader, template
 from .grading import choices
 from .errors import Report
+from .points import item_points, question_points
 from .validate import DEFAULT_ENROLLED, find_course_root
 
 BUILD_SCHEMA = "policlase.build/v1"
@@ -80,7 +81,7 @@ def render_item(item: dict, variables: dict[str, Any], seed: int = 0) -> dict:
 def _render_question(question: dict, variables: dict[str, Any], seed: int = 0) -> tuple[dict, dict]:
     qid = question.get("id")
     rendered: dict[str, Any] = {"id": qid, "type": question.get("type"),
-                                "points": question.get("points")}
+                                "points": question_points(question)}
     solutions: dict[str, Any] = {}
 
     if isinstance(question.get("prompt"), str):
@@ -164,7 +165,7 @@ def build_item(
         built = BuiltItem(
             item_id=item_id,
             item_version=item_version(item),
-            points=float(item.get("points", 0) or 0),
+            points=item_points(item),
             enrolled=enrolled,
         )
         built.variants = [{"seed": 0, "fingerprint": "static", **render_item(item, {}, 0)}]
@@ -184,7 +185,7 @@ def build_item(
     built = BuiltItem(
         item_id=item_id,
         item_version=item_version(item, source_path.read_bytes()),
-        points=float(item.get("points", 0) or 0),
+        points=item_points(item),
         enrolled=enrolled,
     )
 
