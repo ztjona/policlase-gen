@@ -84,6 +84,26 @@ Un archivo YAML puede contener varios ítems. El `id` de cada ítem es global de
 clave de la analítica a lo largo de semestres, así que no se renombra: si el contenido cambia tanto
 que la comparación histórica deja de tener sentido, se crea un `id` nuevo.
 
+### Presentaciones en el repositorio
+
+Las presentaciones de clase en vivo (§9) viven en la carpeta de cada curso, organizadas en
+subcarpetas que la plataforma muestra como **secciones** (unidades):
+
+```
+metodos-numericos/
+└── clases/                      ← la carpeta que se vincula al curso en policlase
+    ├── unidad-01/               ← una sección: «Unidad 01»
+    │   ├── 01-biseccion.yaml
+    │   └── 02-newton.yaml
+    └── repaso-general.yaml      ← sin sección
+```
+
+Una carpeta es una sección si contiene al menos una presentación (o el marcador vacío
+`.policlase-seccion`); el orden es el de los nombres, así que conviene usar prefijos numéricos. Cómo
+se sincroniza la plataforma con el repositorio —cuándo lee, qué commits hace, cómo resuelve
+conflictos— está en [`policlase/docs/github.md`](../../policlase/docs/github.md): no es parte del
+formato de archivo, sino del comportamiento de la plataforma.
+
 ---
 
 ## 3. Reglas de YAML
