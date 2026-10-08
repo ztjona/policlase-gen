@@ -165,3 +165,15 @@ def test_speed_bonus():
     assert deck.compile_deck(document)["speed_bonus"] is True
     document, report = deck.load_deck_text(HEAD.replace("slides:", "speed_bonus: false\nslides:") + "  - markdown: a\n")
     assert not report.errors and deck.compile_deck(document)["speed_bonus"] is False
+
+
+def test_tiempo_sin_limite():
+    source = HEAD.replace("slides:", "defaults: { time_limit_s: null }\nslides:") + CHOICE + CHOICE.replace("L-x", "L-y").replace(
+        "      points: 1\n", "      points: 1\n      lecture: { time_limit_s: 20 }\n", 1)
+    document, report = deck.load_deck_text(source)
+    assert not report.errors, [d.message for d in report]
+    slides = deck.compile_deck(document)["slides"]
+    assert [s["time_limit_s"] for s in slides[:2]] == [None, 20]
+    document, report = deck.load_deck_text(HEAD + CHOICE.replace("      points: 1\n", "      points: 1\n      lecture: { time_limit_s: .inf }\n", 1))
+    assert not report.errors and deck.compile_deck(document)["slides"][0]["time_limit_s"] is None
+    assert codes(CHOICE.replace("      points: 1\n", "      points: 1\n      lecture: { time_limit_s: 2 }\n", 1)) == ["E084"]

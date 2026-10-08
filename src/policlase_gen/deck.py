@@ -37,6 +37,9 @@ DEFAULT_KEYS = {"time_limit_s"}
 LIVE_TYPES = {"choice", "multi_choice", "true_false", "numeric", "text"}
 
 DEFAULT_TIME_LIMIT_S = 30
+#: `time_limit_s: null` (o `.inf`): la pregunta no tiene límite; la cierra el docente o se cierra
+#: sola cuando respondieron todos.
+UNLIMITED = None
 MIN_TIME_LIMIT_S, MAX_TIME_LIMIT_S = 5, 600
 
 
@@ -74,7 +77,8 @@ def validate_deck(document: Any, *, path: Path | str = "<memoria>", report: Repo
     if isinstance(defaults, dict):
         for key in set(defaults) - DEFAULT_KEYS:
             report.add("E001", key=f"defaults.{key}", line=loader.line_of(defaults, key), **here)
-        _check_time_limit(defaults.get("time_limit_s"), report, here)
+        if "time_limit_s" in defaults:
+            _check_time_limit(defaults["time_limit_s"], report, here)
 
     slides = document.get("slides")
     if not isinstance(slides, list) or not slides:
@@ -131,17 +135,31 @@ def validate_deck(document: Any, *, path: Path | str = "<memoria>", report: Repo
             if isinstance(question, dict) and question.get("follow_ups"):
                 report.add("E081", count=1 + len(question["follow_ups"]), **item_at)
 
-        _check_time_limit((item.get("lecture") or {}).get("time_limit_s"), report, item_at)
+        lecture = item.get("lecture") or {}
+        if isinstance(lecture, dict) and "time_limit_s" in lecture:
+            _check_time_limit(lecture["time_limit_s"], report, item_at)
 
     return report
 
 
+def _unlimited(value: Any) -> bool:
+    return value is None or (isinstance(value, float) and value == float("inf"))
+
+
 def _check_time_limit(value: Any, report: Report, at: dict) -> None:
-    if value is None:
+    if _unlimited(value):
         return
     if isinstance(value, bool) or not isinstance(value, (int, float)) \
             or not MIN_TIME_LIMIT_S <= value <= MAX_TIME_LIMIT_S:
         report.add("E084", value=value, low=MIN_TIME_LIMIT_S, high=MAX_TIME_LIMIT_S, **at)
+
+
+def _limit(container: Any, inherited: int | None) -> int | None:
+    """Límite declarado en `container` (null/.inf = sin límite) o el heredado si no lo declara."""
+    if not isinstance(container, dict) or "time_limit_s" not in container:
+        return inherited
+    value = container["time_limit_s"]
+    return UNLIMITED if _unlimited(value) else int(value)
 
 
 def compile_deck(document: dict) -> dict:
@@ -153,7 +171,7 @@ def compile_deck(document: dict) -> dict:
     clase ya dictada.
     """
     defaults = document.get("defaults") or {}
-    default_limit = int(defaults.get("time_limit_s") or DEFAULT_TIME_LIMIT_S)
+    default_limit = _limit(defaults, DEFAULT_TIME_LIMIT_S)
     slides = []
 
     for slide in document.get("slides") or []:
@@ -176,7 +194,7 @@ def compile_deck(document: dict) -> dict:
             "question": question,
             "solution": record,
             "points": question_points(question),
-            "time_limit_s": int(lecture.get("time_limit_s") or default_limit),
+            "time_limit_s": _limit(lecture, default_limit),
             "notes": str(slide.get("notes") or ""),
             "hidden": hidden,
         })

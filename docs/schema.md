@@ -529,7 +529,7 @@ slides:
 |---|---|---|---|
 | `schema` | string | **requerido** | `policlase.deck/v1`. |
 | `title` | string | **requerido** | Título que ven docente y estudiantes. |
-| `defaults.time_limit_s` | integer 5–600 | `30` | Tiempo por pregunta si el ítem no declara otro. |
+| `defaults.time_limit_s` | integer 5–600 o `null` | `30` | Tiempo por pregunta si el ítem no declara otro. `null` (o `.inf`): sin límite. |
 | `slides` | array | **requerido** | Cada diapositiva tiene **exactamente una** de `markdown` o `item` (`E080`). |
 | `slides[].markdown` | string | — | Contenido: markdown con matemáticas. |
 | `slides[].item` | item | — | Un ítem ordinario del esquema v1, con las restricciones de abajo. |
@@ -537,7 +537,7 @@ slides:
 | `slides[].hidden` | boolean | `false` | La diapositiva queda en el archivo pero no se presenta (`E085` si no es booleano). |
 | `speed_bonus` | boolean | `true` | Bono por rapidez en el **marcador** de la clase: una respuesta correcta vale entre el 50 % (al final del tiempo) y el 100 % (al instante) de sus puntos de juego. La **nota** de participación no cambia: cuenta solo si se acertó. |
 | `feedback` | boolean | `true` | Al final de cada clase se agrega una pregunta de retroalimentación **anónima** (valoración de 1 a 5 y comentario opcional). `false` la desactiva. |
-| `item.lecture.time_limit_s` | integer 5–600 | opcional | Tiempo de esa pregunta (`E084` fuera de rango). |
+| `item.lecture.time_limit_s` | integer 5–600 o `null` | opcional | Tiempo de esa pregunta (`E084` fuera de rango). `null` (o `.inf`): sin límite; la cierra el docente o se cierra sola cuando respondieron todos, y no lleva bono por rapidez. |
 
 Restricciones de un ítem en vivo, porque en clase todos ven lo mismo al mismo tiempo:
 
