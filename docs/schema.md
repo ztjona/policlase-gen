@@ -19,7 +19,7 @@ generador sembrado y las reglas de calificación que la plataforma aplica sobre 
 7. [Contrato del generador](#7-contrato-del-generador)
 8. [Tipos de pregunta](#8-tipos-de-pregunta)
 9. [Clases en vivo: presentaciones](#9-clases-en-vivo-presentaciones)
-10. [Composición en actividades](#10-composición-en-actividades)
+10. [Actividades](#10-actividades)
 11. [Catálogo de validación](#11-catálogo-de-validación)
 12. [Versionado](#12-versionado)
 13. [Decisiones pendientes](#13-decisiones-pendientes)
@@ -274,7 +274,7 @@ suele indicar un generador más pobre de lo que se pretendía.
 
 ## 8. Tipos de pregunta
 
-Toda pregunta tiene `id`, `type`, `prompt`, `points` (1 si se omite) y, salvo `open`, una `solution`. El bloque
+Toda pregunta tiene `id`, `type`, `prompt`, `points` (1 si se omite) y, salvo `open` e `image`, una `solution`. El bloque
 `grading` cambia según el tipo.
 
 ### `numeric`
@@ -481,6 +481,30 @@ estudiante**: todas las respuestas a `q4a` juntas, con la rúbrica y la referenc
 Calificar veinticinco respuestas a la misma pregunta seguidas es mucho más consistente que recorrer
 veinticinco exámenes completos, y permite ajustar el criterio a mitad de camino y volver atrás.
 
+### `image`
+
+Una o varias imágenes que sube el estudiante: evidencia de haber visto un video, un certificado,
+la foto del desarrollo a mano. Como `open`, la califica una persona, con rúbrica opcional. Solo
+existe en actividades (§10): en clase en vivo no se responde (`E082`).
+
+```yaml
+- id: q5
+  type: image
+  points: 3
+  max_files: 3              # 1–10; 1 por omisión (E091 fuera de rango)
+  prompt: "Suba la foto de su desarrollo a mano de las tres iteraciones."
+  grading:
+    mode: manual            # manual | ai, igual que en open
+    rubric:
+      - { criterion: "Plantea la fórmula", points: 1 }
+      - { criterion: "Las tres iteraciones son correctas", points: 2 }
+```
+
+La respuesta que recibe el calificador es la lista de imágenes guardadas por la plataforma, no las
+imágenes: el calificador solo marca la pregunta como pendiente de revisión si hay al menos una.
+Qué formatos se aceptan y cómo se guardan es asunto de la plataforma (en policlase: JPEG, PNG y
+WebP, re-codificados sin metadatos; nunca SVG ni PDF).
+
 ### `follow_ups`
 
 Preguntas anidadas que se muestran después de responder la de arriba. Sus `points` son propios y
@@ -588,31 +612,77 @@ lo que se vio ni cómo se calificó una clase ya dictada — la misma inmutabili
 
 ---
 
-## 10. Composición en actividades
+## 10. Actividades
 
-Los ítems no se califican solos: se agrupan en actividades, y la actividad es lo que aparece en el
-libro de calificaciones. Esta sección fija solo la parte que toca al esquema de ítems; el esquema
-completo de actividades y políticas va con el plan.
+Una actividad (deber, taller, evidencia) es un conjunto de ítems que cada estudiante resuelve a su
+paso dentro de una ventana de tiempo. Es un documento aparte, con su propio identificador:
+
+```yaml
+schema: policlase.activity/v1
+title: 'Deber 3 — Newton-Raphson'
+instructions: |
+  Resuelva cada ejercicio con al menos cuatro cifras decimales.
+
+items:
+  - id: D03-newton-raiz
+    stem: 'Sea $f(x) = x^2 - 2$ y $x_0 = 1$.'
+    questions:
+      - { id: q1, type: numeric, prompt: 'Calcule $x_1$.', solution: 1.5, grading: { atol: 0.0001 } }
+  - id: D03-desarrollo
+    questions:
+      - { id: q1, type: image, points: 3, max_files: 3, prompt: 'Foto de su desarrollo.' }
+```
 
 | Campo | Tipo | | Descripción |
 |---|---|---|---|
-| `grading_granularity` | `whole` \| `items` | `whole` | `whole`: ingresas una sola nota de 0 a 100 para la actividad. `items`: la nota se acumula desde los `points` de cada pregunta. |
-| `category` | string | — | `quiz`, `assignment`, `project`, `exam`, `participation`. |
-| `weight` | number | `1` | Peso relativo dentro de su categoría. Los pesos *entre* categorías se ajustan en el panel de calificaciones, no en el YAML. |
-| `extra_credit` | boolean | `false` | Suma puntos al numerador sin añadir nada al denominador. |
+| `schema` | string | **requerido** | `policlase.activity/v1`. |
+| `title` | string | **requerido** | Título que ven docente y estudiantes. |
+| `instructions` | string (markdown) | opcional | Indicaciones generales, encima de los ítems. |
+| `items` | array\<item\> | **requerido** | Ítems ordinarios (§5), con todos los tipos de pregunta, incluidos `open`, `expression` e `image`. |
 
-Empezar en `whole` y profundizar solo donde hace falta evita tener que descomponer en subítems una
-actividad que no lo necesita.
+A diferencia de una presentación, cada ítem admite varias preguntas y `follow_ups`, que en la
+actividad se muestran en orden de lectura, debajo de su pregunta.
 
-Las reglas de agregación acordadas, para que queden asentadas: una actividad sin calificar cuenta
-como **cero**; el crédito extra suma sin ampliar el denominador; un estudiante exonerado recibe una
-nota compensatoria manual; y una categoría vacía se queda en cero, con su peso ajustado a cero al
-cierre del curso.
+**El archivo describe solo el contenido.** Cuándo abre y vence la actividad, a qué fila de la
+ponderación pertenece, cuántos intentos admite y qué pasa con las entregas atrasadas lo decide la
+plataforma: reprogramar una prueba no debe exigir un commit por deber, y la misma actividad sirve
+otro semestre con otras fechas. Una clave como `due` en el archivo es un error (`E001`). Las claves
+`category`, `weight`, `extra_credit` y `grading_granularity` del ítem se siguen aceptando por
+compatibilidad, pero la plataforma no las usa: la ponderación se define por curso.
 
-**Dos vistas, una sola política.** Como lo no calificado cuenta cero, el libro de calificaciones
-ofrece una vista *parcial* (solo lo ya calificado) junto a la vista *final*. Son los mismos datos
-presentados de dos formas; la política oficial no cambia. Evita el pánico de la semana tres sin ceder
-nada.
+**Sin aleatorización por ahora** (`E092`): ni `generator`, ni `variables`, ni marcadores `{{ }}`.
+Las variantes por estudiante se materializan en la máquina del docente (`policlase build`, §7) y
+la plataforma todavía no las recibe; el servidor nunca corre el generador.
+
+**Forma compilada** (`compile_activity`). Igual que una presentación: las opciones salen con su
+clave estable y las soluciones en un subárbol aparte (`items[].solutions`). Además:
+
+- Cada pregunta lleva su `key` (`<id del ítem>.<id de la pregunta>`), única en la actividad.
+- **La rúbrica de `open` e `image` es pública**: el estudiante sabe con qué se le califica. La
+  respuesta de referencia (`reference`) sigue siendo solo del calificador.
+- `review: true` si alguna pregunta la califica una persona; `ai: true` si alguna está marcada con
+  `grading.mode: ai`. Por ahora es solo una etiqueta: la propuesta de la IA no está activa.
+
+**Al empezar un intento, la plataforma copia la actividad compilada.** Corregirla después no altera
+lo que vio ni cómo se calificó a quien ya la respondió — la misma inmutabilidad de la capa 2.
+
+### Reglas de calificación de la plataforma
+
+Para que queden asentadas (implementación: `policlase/apps/activities/engine.py` y
+`apps/grades/gradebook.py`):
+
+- **Cuenta el último intento enviado.** Entre intentos el estudiante ve su puntaje; la corrección
+  detallada, cuando vence la fecha (o se le acaban los intentos).
+- Una pregunta en blanco vale cero; una respuesta ilegible («uno coma cuatro» en una numérica) se
+  devuelve para corregir antes de enviar.
+- **Entregas atrasadas:** bloqueadas, o aceptadas con penalización (30 % por omisión) hasta el
+  cierre del parcial, solo de quien no entregó a tiempo.
+- **Ponderación por parcial:** filas obligatorias que suman 100 % y opcionales que suman encima. La
+  nota del parcial se topa en su máximo (20 por omisión): los extras compensan, no desbordan.
+- Una actividad cuenta desde que vence; vencida y sin entregar, vale cero. Cada clase en vivo
+  terminada cuenta para la participación de todos los inscritos: faltar vale cero.
+- **Aprobación** (por omisión): con la suma de parciales por debajo de 18 se pierde; desde 28 se
+  aprueba; en medio, supletorio sobre 40, aprobado si parciales + supletorio ≥ 48 y supletorio ≥ 24.
 
 **Exportación a Moodle.** Solo de salida, nunca de entrada. El CSV empareja por **correo
 electrónico** por defecto, con el número de identificación como alternativa configurable.
@@ -656,6 +726,8 @@ iteración local. Los códigos `I` son informativos y nunca bloquean.
 | `E083` | error | Aleatorización en una presentación (generador, variables o marcadores). |
 | `E084` | error | `time_limit_s` fuera de 5–600 segundos. |
 | `E085` | error | `hidden` o `feedback` no son booleanos. |
+| `E091` | error | `max_files` de una pregunta `image` fuera de 1–10. |
+| `E092` | error | Aleatorización en una actividad (generador, variables o marcadores). |
 
 Cada mensaje cita archivo, línea, `id` del ítem y, cuando aplica, la semilla que reprodujo el fallo
 —de modo que `policlase build --seed 47` lo reproduce de inmediato.
@@ -677,8 +749,10 @@ mismo.
 
 ## 13. Decisiones pendientes
 
-- **Adjuntos en la respuesta.** Falta un tipo `file` para entregas con código o escaneos. Depende de
-  las cuotas de subida, que van con el plan.
+- **Adjuntos en la respuesta.** Resuelto con `image` (§8): solo imágenes. El texto se responde en
+  línea (`open`), así que no hacen falta PDF ni otros formatos.
+- **Variantes por estudiante en actividades.** El formato las admite (§7), pero la plataforma aún
+  no recibe las variantes compiladas (`E092`).
 - **Calificación asistida por IA.** Pendiente de la revisión de la política de privacidad de la
   universidad. El esquema ya la contempla; nada se activa hasta esa decisión.
 

@@ -88,6 +88,8 @@ def _render_question(question: dict, variables: dict[str, Any], seed: int = 0) -
         rendered["prompt"] = template.render(question["prompt"], variables)
     if question.get("shape"):
         rendered["shape"] = loader.plain(question["shape"])
+    if question.get("type") == "image":
+        rendered["max_files"] = int(question.get("max_files") or 1)
 
     # La mezcla y el muestreo se materializan aquí: la variante guardada debe ser
     # literalmente lo que el estudiante vio, aunque el ítem se edite después.

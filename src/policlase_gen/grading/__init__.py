@@ -146,6 +146,18 @@ def _open(question, response, record, seed, decimal_input):
     )
 
 
+def _image(question, response, record, seed, decimal_input):
+    """Como `open`: la nota la pone una persona. La respuesta es la lista de imágenes subidas
+    (identificadores que guarda la plataforma), no las imágenes mismas."""
+    files = response if isinstance(response, (list, tuple)) else []
+    return Result(
+        fraction=0.0,
+        correct=False,
+        needs_review=bool(files),
+        detail={"files": len(files), "mode": (question.get("grading") or {}).get("mode", "manual")},
+    )
+
+
 GRADERS = {
     "numeric": _numeric,
     "numeric_list": _numeric_list,
@@ -155,4 +167,5 @@ GRADERS = {
     "true_false": _true_false,
     "text": _text,
     "open": _open,
+    "image": _image,
 }

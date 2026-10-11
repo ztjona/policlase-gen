@@ -26,15 +26,19 @@ ITEM_KEYS = {
 }
 QUESTION_KEYS = {
     "id", "type", "points", "prompt", "solution", "shape", "options", "statements",
-    "grading", "sample", "none_of_the_above", "follow_ups",
+    "grading", "sample", "none_of_the_above", "follow_ups", "max_files",
 }
 GENERATOR_KEYS = {"file", "entry", "seeds", "timeout_s"}
 
 QUESTION_TYPES = {
     "numeric", "numeric_list", "expression", "choice", "multi_choice",
-    "true_false", "text", "open",
+    "true_false", "text", "open", "image",
 }
 NUMERIC_TYPES = {"numeric", "numeric_list"}
+#: Tipos que califica una persona (o la IA con revisión): llevan rúbrica, no `solution`.
+REVIEW_TYPES = {"open", "image"}
+#: Imágenes por respuesta de una pregunta `image` (`max_files`, 1 por omisión).
+MAX_FILES_RANGE = (1, 10)
 
 ID_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
 DEFAULT_ENROLLED = 25
@@ -67,9 +71,12 @@ def validate_file(
     for fix in repairs:
         report.add("W061", sequences=", ".join(fix["sequences"]), file=str(path), line=fix["line"])
 
-    from .deck import is_deck, validate_deck      # diferido: deck importa este módulo
+    from .activity import is_activity, validate_activity   # diferidos: importan este módulo
+    from .deck import is_deck, validate_deck
     if is_deck(document):
         return validate_deck(document, path=path, report=report)
+    if is_activity(document):
+        return validate_activity(document, path=path, report=report)
 
     return validate_document(
         document, path=path, report=report, run_generators=run_generators,
@@ -291,7 +298,14 @@ def _validate_question(question, *, report, path, item_id, seen) -> float:
     if kind == "text" and not grading.get("accept"):
         report.add("E003", key="grading.accept", **at)
 
-    if kind == "open":
+    if kind == "image":
+        max_files = question.get("max_files", 1)
+        low, high = MAX_FILES_RANGE
+        if isinstance(max_files, bool) or not isinstance(max_files, int) or not low <= max_files <= high:
+            report.add("E091", value=max_files, low=low, high=high,
+                       **{**at, "line": loader.line_of(question, "max_files")})
+
+    if kind in REVIEW_TYPES:
         mode = grading.get("mode", "manual")
         rubric = grading.get("rubric")
         if mode == "ai" and not rubric:

@@ -59,6 +59,8 @@ CATALOG: dict[str, tuple[Severity, str]] = {
     "E083": (Severity.ERROR, "La diapositiva {number} usa aleatorización; en clase en vivo todos ven lo mismo, sin generador ni marcadores"),
     "E084": (Severity.ERROR, "time_limit_s inválido ({value}): debe estar entre {low} y {high} segundos"),
     "E085": (Severity.ERROR, "'{key}' debe ser true o false; tiene {found!r}"),
+    "E091": (Severity.ERROR, "max_files inválido ({value}): debe ser un entero entre {low} y {high}"),
+    "E092": (Severity.ERROR, "El ítem usa aleatorización (generador, variables o marcadores); las actividades aún no admiten variantes por estudiante"),
 }
 
 

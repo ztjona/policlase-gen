@@ -1,0 +1,54 @@
+schema: policlase.activity/v1
+title: 'Deber 3 — Newton-Raphson'
+instructions: |
+  Resuelva cada ejercicio con al menos cuatro cifras decimales. En la última pregunta suba la
+  foto de su desarrollo a mano: se califica el procedimiento, no solo el resultado.
+
+items:
+  - id: D03-newton-raiz
+    tags: [unidad-02, newton]
+    stem: |
+      Sea $f(x) = x^2 - 2$ y $x_0 = 1$.
+    questions:
+      - id: q1
+        type: numeric
+        prompt: 'Calcule $x_1$ con el método de Newton-Raphson.'
+        solution: 1.5
+        grading: { atol: 0.0001 }
+      - id: q2
+        type: numeric
+        points: 2
+        prompt: 'Calcule $x_3$.'
+        solution: 1.414215686
+        grading: { atol: 0.0001 }
+      - id: q3
+        type: choice
+        prompt: '¿Qué orden de convergencia tiene el método cerca de una raíz simple?'
+        options:
+          - { text: 'Cuadrático', correct: true }
+          - { text: 'Lineal' }
+          - { text: 'Superlineal, de orden 1.618' }
+
+  - id: D03-newton-reflexion
+    questions:
+      - id: q1
+        type: open
+        points: 2
+        prompt: '¿Por qué falla Newton-Raphson si $f''(x_k) = 0$? Explique con sus palabras.'
+        grading:
+          mode: ai
+          reference: |
+            La tangente es horizontal y no corta el eje x: la división entre f'(x_k) no existe.
+          rubric:
+            - { criterion: 'Identifica la división entre cero', points: 1 }
+            - { criterion: 'La interpreta geométricamente (tangente horizontal)', points: 1 }
+      - id: q2
+        type: image
+        points: 3
+        max_files: 3
+        prompt: 'Suba la foto de su desarrollo a mano de las tres iteraciones.'
+        grading:
+          mode: manual
+          rubric:
+            - { criterion: 'Plantea la fórmula de Newton-Raphson', points: 1 }
+            - { criterion: 'Las tres iteraciones son correctas', points: 2 }
