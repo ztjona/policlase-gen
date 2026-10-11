@@ -344,7 +344,9 @@ declara ambas variables. Comparar LaTeX con lo que teclea un estudiante exigirí
 LaTeX, que es un problema mayor que el que resuelve.
 
 Sintaxis admitida: números, los símbolos de `vars`, `pi` y `e`, las funciones de `allow`,
-`+ - * / % ** ^` y paréntesis. **La multiplicación debe ser explícita** (`2*x`, no `2x`); escribir
+`+ - * / % ** ^` y paréntesis. `pi` y `e` son **constantes**: valen π y *e*, y al comparar no se
+muestrean (`e^x` equivale a `exp(x)`); solo una variable declarada en `vars` con ese nombre las
+reemplaza. **La multiplicación debe ser explícita** (`2*x`, no `2x`); escribir
 `2x` produce un mensaje que lo dice. Todo lo demás —atributos, índices, listas, comparaciones— se
 rechaza en el AST antes de evaluar nada.
 
@@ -449,6 +451,10 @@ grading:
   accept: ["bisección", "biseccion", "método de bisección"]
   normalize: [lowercase, strip_accents, collapse_spaces]
 ```
+
+Reglas de `normalize`: `lowercase`, `strip_accents`, `collapse_spaces`, `strip_punctuation`. Sin la
+clave se aplican las tres primeras; `normalize: []` compara literalmente (para símbolos como `\` o
+`{`, o cuando importan las mayúsculas).
 
 ### `open`
 

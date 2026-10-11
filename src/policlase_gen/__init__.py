@@ -10,7 +10,7 @@ Ver `docs/schema.md` para la referencia normativa del formato.
 from .errors import Diagnostic, Report, Severity
 from .validate import SCHEMA_VERSIONS, validate_document, validate_file
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "Diagnostic", "Report", "Severity",

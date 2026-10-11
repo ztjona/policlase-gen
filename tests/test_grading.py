@@ -76,6 +76,22 @@ def test_expresiones_equivalentes_se_reconocen():
     assert not grade(question, "x**2 + 1", solution="x**2 - 1").correct
 
 
+def test_pi_y_e_son_constantes_no_variables_muestreadas():
+    """Muestrearlas les daba valores al azar: la propia solución `4*e^(-x/2)` salía incorrecta."""
+    question = {"type": "expression", "grading": {"vars": ["x"], "domain": {"x": [-3, 3]}}}
+    assert grade(question, "4*e^(-x/2)", solution="4*e^(-x/2)").correct
+    assert grade(question, "4*exp(-x/2)", solution="4*e^(-x/2)").correct
+    assert grade(question, "3.141592653589793*x", solution="pi*x").correct
+    assert not grade(question, "3*x", solution="pi*x").correct
+    assert grade(question, "e^2", solution="exp(2)").correct          # sin variables
+
+
+def test_variable_declarada_con_nombre_de_constante_se_muestrea():
+    question = {"type": "expression", "grading": {"vars": ["e"], "domain": {"e": [1, 2]}}}
+    assert grade(question, "e*e", solution="e^2").correct
+    assert not grade(question, "2.718281828459045^2", solution="e^2").correct
+
+
 def test_evaluador_rechaza_todo_lo_que_no_sea_aritmetica():
     for hostil in ('__import__("os").system("ls")', "x.__class__", "[1,2]", "lambda: 1",
                    "open('/etc/passwd')", "x if x else 0"):
@@ -172,6 +188,15 @@ def test_text_normaliza_acentos_y_mayusculas():
     }
     assert grade(question, "BISECCION").correct
     assert not grade(question, "newton").correct
+
+
+def test_text_con_normalize_vacio_compara_literalmente():
+    question = {"type": "text", "points": 1, "grading": {"accept": ["\\"], "normalize": []}}
+    assert grade(question, "\\").correct
+    question = {"type": "text", "points": 1, "grading": {"accept": ["Newton"], "normalize": []}}
+    assert not grade(question, "newton").correct
+    del question["grading"]["normalize"]                                 # ausente: las de siempre
+    assert grade(question, "newton").correct
 
 
 def test_open_nunca_califica_solo():

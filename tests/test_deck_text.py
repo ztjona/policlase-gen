@@ -105,3 +105,33 @@ def test_errores():
         deck_text.move_slide(SOURCE, 0, 9)
     with pytest.raises(deck_text.EditError):
         deck_text.slide_ranges("slides: [ :")
+
+
+ACTIVITY = """schema: policlase.activity/v1
+title: 'Deber'
+
+items:
+  # el primero
+  - id: a
+    questions:
+      - { id: q1, type: numeric, prompt: 'Uno', solution: 1, grading: { atol: 0 } }
+
+  - id: b
+    questions:
+      - { id: q1, type: numeric, prompt: 'Dos', solution: 2, grading: { atol: 0 } }
+meta: { locale: es-EC }
+"""
+
+
+def test_mover_items_de_una_actividad():
+    from policlase_gen import activity
+
+    moved = deck_text.move_item(ACTIVITY, 0, 1)
+    document, report = activity.load_activity_text(moved)
+    assert not report.errors
+    assert [item["id"] for item in document["items"]] == ["b", "a"]
+    assert "  # el primero\n  - id: a" in moved                  # el comentario viaja con su ítem
+    assert moved.endswith("meta: { locale: es-EC }\n")
+    assert deck_text.move_item(moved, 1, 0) == ACTIVITY
+    with pytest.raises(deck_text.EditError, match="ítems"):
+        deck_text.move_item("schema: policlase.activity/v1\ntitle: x\nitems: []\n", 0, 1)

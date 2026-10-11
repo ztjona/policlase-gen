@@ -317,6 +317,28 @@ def generate(seed):
     assert "E026" in _codes_of(item)
 
 
+def test_tiempo_limite_sin_sigalrm(monkeypatch):
+    """En Windows no hay `setitimer`: el límite lo pone un hilo, y no se cuelga la suite."""
+    import signal as signal_module
+    import time
+
+    monkeypatch.delattr(signal_module, "setitimer")
+
+    def eterno(seed):
+        while True:
+            time.sleep(0.01)
+
+    start = time.monotonic()
+    with pytest.raises(gen.GeneratorError, match="tiempo límite"):
+        gen.run_seed(eterno, 1, timeout_s=0.2)
+    assert time.monotonic() - start < 2
+
+    variant = gen.run_seed(lambda seed: {"public": {"a": seed}, "private": {}}, 7, timeout_s=1)
+    assert variant.public == {"a": 7}
+    with pytest.raises(gen.GeneratorError, match="ZeroDivisionError"):
+        gen.run_seed(lambda seed: 1 / 0, 1, timeout_s=1)
+
+
 def test_E027_forma_incorrecta_del_retorno(tmp_path):
     body = """
 def generate(seed):

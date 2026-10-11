@@ -50,8 +50,9 @@ class FormatError(Exception):
 class Expression:
     source: str
     tree: ast.Expression
-    names: frozenset[str]
+    names: frozenset[str]          # variables: se muestrean al comparar
     calls: frozenset[str]
+    constants: frozenset[str] = frozenset()   # pi, e: valen lo que valen, nunca se muestrean
 
 
 def parse(text: str, variables: set[str] | None = None, allow: set[str] | None = None) -> Expression:
@@ -102,7 +103,9 @@ def parse(text: str, variables: set[str] | None = None, allow: set[str] | None =
             names.add(node.id)
 
     free = names - calls
-    unknown = free - variables - allowed_constants
+    # Una variable declarada con el nombre de una constante (p. ej. `e`) manda sobre ella.
+    constants = {n for n in free if n in allowed_constants and n not in variables}
+    unknown = free - constants - variables
     if unknown:
         pretty = ", ".join(sorted(unknown))
         raise FormatError(
@@ -110,7 +113,8 @@ def parse(text: str, variables: set[str] | None = None, allow: set[str] | None =
             f"Escriba la multiplicación explícita (2*x, no 2x)."
         )
 
-    return Expression(source=source, tree=tree, names=frozenset(free), calls=frozenset(calls))
+    return Expression(source=source, tree=tree, names=frozenset(free - constants), calls=frozenset(calls),
+                      constants=frozenset(constants))
 
 
 def _syntax_hint(source: str, exc: SyntaxError) -> str:
@@ -127,8 +131,8 @@ def _syntax_hint(source: str, exc: SyntaxError) -> str:
 def evaluate(expression: Expression, values: dict[str, float]) -> float:
     """Evalúa en un punto. El espacio de nombres se construye desde cero."""
     namespace = {name: FUNCTIONS[name] for name in expression.calls}
-    namespace.update({k: v for k, v in CONSTANTS.items() if k in expression.names})
-    namespace.update(values)
+    namespace.update({k: v for k, v in CONSTANTS.items() if k in expression.constants})
+    namespace.update({k: v for k, v in values.items() if k in expression.names})
     code = compile(expression.tree, filename="<expresión>", mode="eval")
     return eval(code, {"__builtins__": {}}, namespace)  # noqa: S307 - AST ya validado
 
@@ -148,6 +152,7 @@ def equivalent(
     casi ninguno lo es (``ln`` de negativos, división por cero), no hay evidencia suficiente
     y se responde ``False`` en vez de aceptar por vacío.
     """
+    # Solo las variables: `pi` y `e` muestreados al azar harían que `e^x` dejara de ser `exp(x)`.
     variables = sorted(set(student.names) | set(reference.names))
     if not variables:
         try:

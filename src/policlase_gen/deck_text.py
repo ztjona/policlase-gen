@@ -1,9 +1,10 @@
-"""Ediciones de una presentación sobre el texto, sin reformatear el YAML.
+"""Ediciones de una presentación o una actividad sobre el texto, sin reformatear el YAML.
 
-El editor de la plataforma reordena y oculta diapositivas desde un panel lateral; el archivo es
-la fuente de verdad (y vive en git), así que cada operación toca solo las líneas necesarias:
-mover una diapositiva mueve su bloque de líneas con sus comentarios; ocultarla agrega o quita
-una línea `hidden: true`. El diff en GitHub queda igual de legible que si lo hubiera hecho a mano.
+El editor de la plataforma reordena y oculta diapositivas (o reordena los ítems de una actividad)
+desde un panel lateral; el archivo es la fuente de verdad (y vive en git), así que cada operación
+toca solo las líneas necesarias: mover una diapositiva mueve su bloque de líneas con sus
+comentarios; ocultarla agrega o quita una línea `hidden: true`. El diff en GitHub queda igual de
+legible que si lo hubiera hecho a mano.
 """
 
 from __future__ import annotations
@@ -24,8 +25,9 @@ def _blank_or_comment(line: str) -> bool:
     return not line.strip() or line.lstrip().startswith("#")
 
 
-def slide_ranges(text: str) -> list[tuple[int, int]]:
-    """[inicio, fin) en índices de línea (0-based) del bloque de cada diapositiva.
+def slide_ranges(text: str, key: str = "slides") -> list[tuple[int, int]]:
+    """[inicio, fin) en índices de línea (0-based) del bloque de cada diapositiva (o de cada
+    elemento de la lista raíz `key`: `items` en una actividad).
 
     Los comentarios inmediatamente encima de una diapositiva viajan con ella; las líneas en
     blanco entre diapositivas quedan con la anterior.
@@ -34,9 +36,10 @@ def slide_ranges(text: str) -> list[tuple[int, int]]:
         document = loader.load_text(text, "<presentación>")
     except loader.LoadError as exc:
         raise EditError(str(exc.detail)) from None
-    slides = document.get("slides") if isinstance(document, dict) else None
+    slides = document.get(key) if isinstance(document, dict) else None
     if not isinstance(slides, list) or not slides:
-        raise EditError("la presentación no tiene diapositivas")
+        raise EditError("la presentación no tiene diapositivas" if key == "slides"
+                        else "la actividad no tiene ítems")
 
     lines = text.splitlines(keepends=True)
     starts = []
@@ -72,12 +75,12 @@ def _trailing_blanks(block: list[str]) -> int:
     return count
 
 
-def move_slide(text: str, source: int, target: int) -> str:
+def move_slide(text: str, source: int, target: int, key: str = "slides") -> str:
     """Mueve la diapositiva `source` a la posición `target` (índices 0-based)."""
-    ranges = slide_ranges(text)
+    ranges = slide_ranges(text, key)
     n = len(ranges)
     if not (0 <= source < n and 0 <= target < n):
-        raise EditError("índice de diapositiva fuera de rango")
+        raise EditError("índice fuera de rango")
     if source == target:
         return text
     lines = text.splitlines(keepends=True)
@@ -99,6 +102,11 @@ def move_slide(text: str, source: int, target: int) -> str:
     if not text.endswith("\n") and result.endswith("\n"):
         result = result[:-1]
     return result
+
+
+def move_item(text: str, source: int, target: int) -> str:
+    """Mueve el ítem `source` de una actividad a la posición `target`."""
+    return move_slide(text, source, target, key="items")
 
 
 def set_hidden(text: str, index: int, hidden: bool) -> str:

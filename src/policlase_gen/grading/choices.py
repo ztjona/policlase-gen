@@ -185,7 +185,10 @@ def normalize(text: str, rules: list[str] | None) -> str:
 
 def grade_text(question: dict, response: Any) -> Result:
     grading = question.get("grading") or {}
-    rules = grading.get("normalize") or ["lowercase", "strip_accents", "collapse_spaces"]
+    # `normalize: []` es «ninguna regla», no «las de siempre»: solo la clave ausente usa las por omisión.
+    rules = grading.get("normalize")
+    if rules is None:
+        rules = ["lowercase", "strip_accents", "collapse_spaces"]
 
     if response is None or str(response).strip() == "":
         return Result.invalid("La respuesta está vacía.")

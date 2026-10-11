@@ -14,6 +14,7 @@ import importlib.util
 import json
 import signal
 import sys
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -113,15 +114,42 @@ def check_serializable(value: Any, path: str = "") -> str | None:
     return path or "<raíz>"
 
 
+def _call_in_thread(func: Callable[[int], dict], seed: int, timeout_s: float) -> dict:
+    """Sin `SIGALRM` (Windows, o fuera del hilo principal): el generador corre en un hilo aparte.
+
+    Un hilo no se puede matar: si se cuelga, sigue girando hasta que termine el proceso. Basta
+    para lo que promete este módulo —atrapar generadores equivocados y reportar E026 en vez de
+    colgar `validate` y `build`—, y la CLI sale enseguida.
+    """
+    outcome: dict[str, Any] = {}
+
+    def work():
+        try:
+            outcome["value"] = func(seed)
+        except BaseException as exc:  # noqa: BLE001 - se relanza en el hilo que llamó
+            outcome["error"] = exc
+
+    worker = threading.Thread(target=work, name="policlase-generador", daemon=True)
+    worker.start()
+    worker.join(timeout_s)
+    if worker.is_alive():
+        raise _Timeout()
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome["value"]
+
+
 def run_seed(func: Callable[[int], dict], seed: int, timeout_s: float = DEFAULT_TIMEOUT_S) -> Variant:
     """Corre el generador una vez y valida la forma de lo devuelto."""
-    has_alarm = hasattr(signal, "setitimer")
+    # `SIGALRM` interrumpe incluso un bucle infinito, pero solo existe en Unix y solo en el hilo
+    # principal; en los demás casos se usa un hilo con tiempo límite.
+    has_alarm = hasattr(signal, "setitimer") and threading.current_thread() is threading.main_thread()
     previous = None
     if has_alarm:
         previous = signal.signal(signal.SIGALRM, _alarm)
         signal.setitimer(signal.ITIMER_REAL, timeout_s)
     try:
-        result = func(seed)
+        result = func(seed) if has_alarm else _call_in_thread(func, seed, timeout_s)
     except _Timeout:
         raise GeneratorError(f"excedió el tiempo límite de {timeout_s}s") from None
     except Exception as exc:
