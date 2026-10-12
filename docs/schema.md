@@ -18,7 +18,7 @@ generador sembrado y las reglas de calificación que la plataforma aplica sobre 
 6. [Lenguaje de plantillas](#6-lenguaje-de-plantillas)
 7. [Contrato del generador](#7-contrato-del-generador)
 8. [Tipos de pregunta](#8-tipos-de-pregunta)
-9. [Clases en vivo: presentaciones](#9-clases-en-vivo-presentaciones)
+9. [Contenido: clases, actividades y evaluaciones](#9-contenido-clases-actividades-y-evaluaciones)
 10. [Actividades](#10-actividades)
 11. [Catálogo de validación](#11-catálogo-de-validación)
 12. [Versionado](#12-versionado)
@@ -376,6 +376,12 @@ Una sola opción correcta.
   sample: { distractors: 3, shuffle: seeded }
 ```
 
+**Encuesta** (`grading: { mode: survey }`, también en `multi_choice`): se registra lo elegido, sin
+opción correcta (`E093` si alguna lo es) ni puntos (`points` vale 0; `E094` si declara otro valor).
+La plataforma no muestra correcto ni incorrecto y le muestra al docente cuántos eligieron cada
+opción. Sirve para preguntar algo del estudiante («¿Qué distribución tiene su teclado?») o para
+sondear la clase antes de explicar.
+
 Se declaran todos los distractores y `sample.distractors` elige cuántos mostrar, de forma
 determinista según la semilla. `none_of_the_above` es un caso especial: la plataforma añade la opción
 y la ancla siempre al final.
@@ -543,41 +549,86 @@ Dos propiedades que conviene no perder de vista:
 
 ---
 
-## 9. Clases en vivo: presentaciones
+## 9. Contenido: clases, actividades y evaluaciones
 
-Una clase en vivo es una **presentación**: una secuencia de diapositivas que el docente avanza desde
-el proyector, algunas de contenido y otras con una pregunta que los estudiantes responden desde su
-teléfono. Es un documento aparte, con su propio identificador de esquema:
+Una clase en vivo, una actividad y una evaluación se escriben con **el mismo formato** y en el mismo
+editor: una secuencia de diapositivas de contenido, ítems y **segmentos**. `use` dice para qué es el
+documento y pone los comportamientos por omisión; un segmento los cambia para lo que le sigue.
 
 ```yaml
-schema: policlase.deck/v1
-title: "Bisección — clase 1"
-defaults: { time_limit_s: 30 }
+schema: policlase/v1
+title: 'Deber 1 — Teclado y LaTeX'
+use: activity                       # class · activity · evaluation
+instructions: |                     # actividades y evaluaciones: se ven antes de empezar
+  Resuelva a su ritmo. La última parte tiene tiempo por pregunta.
 
 slides:
   - markdown: |
-      # El teorema de Bolzano
-      Si $f$ es continua en $[a,b]$ y $f(a)\,f(b) < 0$, existe $c$ con $f(c) = 0$.
-    notes: "Solo las ve el docente en el proyector."
+      ## La distribución del teclado
+      Lo que cuenta es la configurada en el sistema, no lo impreso en las teclas.
 
   - item:
-      id: L01-bolzano
-      tags: [unidad-01, biseccion]
-      points: 1
-      lecture: { time_limit_s: 20 }
+      id: U00-teclado
       questions:
         - id: q1
           type: choice
-          points: 1
-          prompt: "¿Qué garantiza el teorema de Bolzano?"
-          options:
-            - { text: "Existe al menos una raíz en el intervalo.", correct: true }
-            - { text: "La raíz es única." }
+          prompt: '¿Qué distribución tiene su teclado?'
+          grading: { mode: survey }  # encuesta: sin correcta ni puntos (§8, choice)
+          options: [{ text: 'Español (Latinoamérica)' }, { text: 'Español (España)' }, { text: 'Inglés' }]
+
+  - segment:                        # desde aquí: 15 s por pregunta y sin pegar
+      title: 'Símbolos'
+      instructions: 'Cada pregunta se abre a pedido y se cierra a los 15 segundos.'
+      time_limit_s: 15
+      block_paste: true
+
+  - item:
+      id: U00-barra
+      questions:
+        - { id: q1, type: text, prompt: 'Escriba la barra invertida.', grading: { accept: ['\'], normalize: [] } }
+
+  - segment: {}                     # vuelve a lo del documento
 ```
 
 | Campo | Tipo | | Descripción |
 |---|---|---|---|
-| `schema` | string | **requerido** | `policlase.deck/v1`. |
+| `schema` | string | **requerido** | `policlase/v1`. |
+| `title` | string | **requerido** | Título que ven docente y estudiantes. |
+| `use` | `class` · `activity` · `evaluation` | **requerido** | Clase en vivo (pestaña Clases), actividad (pestaña Actividades) o evaluación (pestaña Evaluaciones, próximamente). `E086` si es otro valor. |
+| `instructions` | string (markdown) | opcional | Indicaciones generales (actividades y evaluaciones). |
+| `slides` | array | **requerido** | Cada elemento tiene **exactamente una** de `markdown`, `item` o `segment` (`E080`), y al menos uno no es un segmento (`E004`). |
+| `slides[].markdown` | string | — | Contenido: markdown con matemáticas. En una actividad se lee entre los ítems. |
+| `slides[].item` | item | — | Un ítem ordinario (§5). En una clase, con las restricciones de abajo. |
+| `slides[].segment` | mapping | — | Cambia el comportamiento desde aquí hasta el próximo segmento: `title`, `instructions` y las claves de comportamiento. Cada segmento parte de lo del documento. |
+| `slides[].notes` | string | opcional | Notas para el docente. |
+| `slides[].hidden` | boolean | `false` | Queda en el archivo pero no se presenta ni se responde. |
+| `meta` | mapping | opcional | Datos libres. |
+
+**Comportamientos.** En la raíz valen para todo el documento; en un segmento, para sus
+diapositivas. `use` pone los valores por omisión. Una clave que no aplica al uso se ignora con un
+aviso (`W087`).
+
+| Clave | `class` | `activity` | `evaluation` | Qué hace |
+|---|---|---|---|---|
+| `time_limit_s` (5–600 o `null`) | `30` | `null` | `null` | En clase, la cuenta regresiva del proyector. En una actividad o evaluación, la pregunta se abre a pedido con su cuenta regresiva, se responde una sola vez y se cierra sola al acabarse el tiempo (`E084` fuera de rango). |
+| `block_paste` | — | `false` | `true` | Impide pegar texto en las respuestas. |
+| `speed_bonus` (solo raíz) | `true` | — | — | Bono por rapidez en el marcador (no en la nota). |
+| `feedback` (solo raíz) | `true` | — | — | Retroalimentación anónima al final de la clase. |
+
+En una clase, `item.lecture.time_limit_s` todavía manda sobre el segmento para esa pregunta.
+
+**Forma compilada** (`policlase_gen.document.compile_content`): la de una presentación para
+`use: class` (§9, abajo) y la de una actividad para `activity` y `evaluation` (§10), con estos
+agregados: cada pregunta de una actividad lleva su `time_limit_s` y su `block_paste`; los segmentos
+y las diapositivas de contenido aparecen como bloques (`kind: segment` / `content`) entre los ítems
+(`kind: item`); y todo lo compilado lleva `at`, su posición en `slides`, para que el editor lo ubique.
+
+**Formatos anteriores.** `policlase.deck/v1` (una clase) y `policlase.activity/v1` (una actividad,
+§10) se siguen aceptando y compilan igual; no tienen segmentos. En una presentación `deck/v1`:
+
+| Campo | Tipo | | Descripción |
+|---|---|---|---|
+| `schema` | string | **requerido** | `policlase.deck/v1`. Equivale a `use: class`. |
 | `title` | string | **requerido** | Título que ven docente y estudiantes. |
 | `defaults.time_limit_s` | integer 5–600 o `null` | `30` | Tiempo por pregunta si el ítem no declara otro. `null` (o `.inf`): sin límite. |
 | `slides` | array | **requerido** | Cada diapositiva tiene **exactamente una** de `markdown` o `item` (`E080`). |
@@ -588,6 +639,9 @@ slides:
 | `speed_bonus` | boolean | `true` | Bono por rapidez en el **marcador** de la clase: una respuesta correcta vale entre el 50 % (al final del tiempo) y el 100 % (al instante) de sus puntos de juego. La **nota** de participación no cambia: cuenta solo si se acertó. |
 | `feedback` | boolean | `true` | Al final de cada clase se agrega una pregunta de retroalimentación **anónima** (valoración de 1 a 5 y comentario opcional). `false` la desactiva. |
 | `item.lecture.time_limit_s` | integer 5–600 o `null` | opcional | Tiempo de esa pregunta (`E084` fuera de rango). `null` (o `.inf`): sin límite; la cierra el docente o se cierra sola cuando respondieron todos, y no lleva bono por rapidez. |
+
+
+### Clases en vivo (`use: class`)
 
 Restricciones de un ítem en vivo, porque en clase todos ven lo mismo al mismo tiempo:
 
@@ -681,6 +735,11 @@ Para que queden asentadas (implementación: `policlase/apps/activities/engine.py
   detallada, cuando vence la fecha (o se le acaban los intentos).
 - Una pregunta en blanco vale cero; una respuesta ilegible («uno coma cuatro» en una numérica) se
   devuelve para corregir antes de enviar.
+- **Preguntas con tiempo** (`time_limit_s` en un segmento, §9): no se ven hasta que el estudiante
+  las abre; desde ahí corre el reloj del servidor, se guardan mientras corre y se cierran solas al
+  acabarse (con unos segundos de gracia por la conexión). Se responden una sola vez en cada intento;
+  una que no se abrió vale cero.
+- **Encuestas:** se registran y no cuentan para la nota.
 - **Entregas atrasadas:** bloqueadas, o aceptadas con penalización (30 % por omisión) hasta el
   cierre del parcial, solo de quien no entregó a tiempo.
 - **Ponderación por parcial:** filas obligatorias que suman 100 % y opcionales que suman encima. La
@@ -720,20 +779,25 @@ iteración local. Los códigos `I` son informativos y nunca bloquean.
 | `E045` | error | `mode: ai` sin `rubric`. |
 | `E046` | error | Los puntos de la rúbrica no suman los de la pregunta. |
 | `E047` | error | `true_false` con una afirmación sin `answer`. |
-| `E048` | error | `multi_choice` sin ninguna opción correcta. |
+| `E048` | error | `multi_choice` sin ninguna opción correcta (salvo una encuesta). |
 | `E050` | error | Los puntos de las preguntas no suman los del ítem. |
 | `E060` | error | KaTeX no pudo analizar una expresión, o hay `$` sin cerrar. |
 | `W061` | aviso | LaTeX entre comillas dobles: un escape de YAML se tragó un comando; se corrigió. |
 | `W070` | aviso | `none_of_the_above` nunca es correcta en ninguna variante. |
 | `W071` | aviso | `multi_choice` con `partial: per_option` y `penalty` &lt; 1.0. |
-| `E080` | error | Diapositiva sin `markdown` ni `item`, o con ambos. |
+| `E080` | error | Diapositiva sin `markdown`, `item` ni `segment`, o con más de uno. |
 | `E081` | error | Ítem en vivo con más de una pregunta o con `follow_ups`. |
 | `E082` | error | Tipo de pregunta no respondible en vivo. |
 | `E083` | error | Aleatorización en una presentación (generador, variables o marcadores). |
 | `E084` | error | `time_limit_s` fuera de 5–600 segundos. |
-| `E085` | error | `hidden` o `feedback` no son booleanos. |
+| `E085` | error | `hidden`, `feedback`, `speed_bonus` o `block_paste` no son booleanos. |
+| `E086` | error | `use` no es `class`, `activity` ni `evaluation`. |
+| `W087` | aviso | Un comportamiento que no aplica al uso del documento (se ignora). |
 | `E091` | error | `max_files` de una pregunta `image` fuera de 1–10. |
 | `E092` | error | Aleatorización en una actividad (generador, variables o marcadores). |
+| `E093` | error | Una encuesta con una opción marcada como correcta. |
+| `E094` | error | Una encuesta con `points` distinto de 0. |
+| `E095` | error | `grading.mode` que no existe para el tipo (`manual`/`ai` en `open` e `image`; `survey` en `choice` y `multi_choice`). |
 
 Cada mensaje cita archivo, línea, `id` del ítem y, cuando aplica, la semilla que reprodujo el fallo
 —de modo que `policlase build --seed 47` lo reproduce de inmediato.
@@ -759,6 +823,10 @@ mismo.
   línea (`open`), así que no hacen falta PDF ni otros formatos.
 - **Variantes por estudiante en actividades.** El formato las admite (§7), pero la plataforma aún
   no recibe las variantes compiladas (`E092`).
+- **Evaluaciones (`use: evaluation`).** El formato las admite (§9); la plataforma las recibirá con la
+  pestaña Evaluaciones (una sola vez, en una ventana de tiempo).
+- **Respuestas en LaTeX calificadas.** `expression` compara expresiones de una línea; leer LaTeX
+  (`\frac`, `\sqrt`, sumatorias, integrales) y evaluarlo por valor queda para más adelante.
 - **Calificación asistida por IA.** Pendiente de la revisión de la política de privacidad de la
   universidad. El esquema ya la contempla; nada se activa hasta esa decisión.
 

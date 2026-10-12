@@ -16,7 +16,7 @@ from typing import Any
 
 from . import choices, expression as expr, numbers
 from .result import Result
-from ..points import question_points
+from ..points import is_survey, question_points
 
 __all__ = ["Result", "grade", "GRADERS", "choices", "numbers", "expr"]
 
@@ -39,7 +39,7 @@ def grade(
         solution = question["solution"]
     record = _as_record(solution)
 
-    handler = GRADERS.get(kind)
+    handler = _survey if is_survey(question) else GRADERS.get(kind)
     if handler is None:
         return Result.invalid(f"Tipo de pregunta no calificable: {kind!r}")
 
@@ -129,6 +129,18 @@ def _text(question, response, record, seed, decimal_input):
     if accept and not (question.get("grading") or {}).get("accept"):
         question = {**question, "grading": {**(question.get("grading") or {}), "accept": accept}}
     return choices.grade_text(question, response)
+
+
+def _survey(question, response, record, seed, decimal_input):
+    """Encuesta: se comprueba que lo elegido exista y se registra; no hay correcta ni puntos."""
+    options = _presented_options(question, record, seed)
+    picked = list(response) if isinstance(response, (list, tuple)) else [response]
+    picked = [p for p in picked if p not in (None, "")]
+    if not picked or (question.get("type") == "choice" and len(picked) != 1):
+        return Result.invalid("No se seleccionó ninguna opción.")
+    if any(choices._match(options, p) is None for p in picked):
+        return Result.invalid("La opción seleccionada no existe.")
+    return Result(fraction=0.0, correct=False, detail={"survey": True})
 
 
 def _open(question, response, record, seed, decimal_input):

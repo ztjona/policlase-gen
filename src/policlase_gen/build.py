@@ -20,7 +20,7 @@ from . import generator as gen
 from . import loader, template
 from .grading import choices
 from .errors import Report
-from .points import item_points, question_points
+from .points import is_survey, item_points, question_points
 from .validate import DEFAULT_ENROLLED, find_course_root
 
 BUILD_SCHEMA = "policlase.build/v1"
@@ -90,6 +90,8 @@ def _render_question(question: dict, variables: dict[str, Any], seed: int = 0) -
         rendered["shape"] = loader.plain(question["shape"])
     if question.get("type") == "image":
         rendered["max_files"] = int(question.get("max_files") or 1)
+    if is_survey(question):
+        rendered["survey"] = True              # la plataforma no muestra correcta ni incorrecta
 
     # La mezcla y el muestreo se materializan aquí: la variante guardada debe ser
     # literalmente lo que el estudiante vio, aunque el ítem se edite después.

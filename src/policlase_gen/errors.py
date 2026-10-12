@@ -53,7 +53,7 @@ CATALOG: dict[str, tuple[Severity, str]] = {
     "W061": (Severity.WARNING, "Comillas dobles: {sequences} dentro de las matemáticas se leyó como escape de YAML y se corrigió; escriba el LaTeX entre comillas simples"),
     "W070": (Severity.WARNING, "none_of_the_above nunca es correcta; los estudiantes aprenden a descartarla"),
     "W071": (Severity.WARNING, "multi_choice con partial 'per_option' y penalty {penalty}: marcar todas las opciones da nota completa"),
-    "E080": (Severity.ERROR, "La diapositiva {number} debe tener exactamente una de 'markdown' o 'item'"),
+    "E080": (Severity.ERROR, "La diapositiva {number} debe tener exactamente una de: {allowed}"),
     "E081": (Severity.ERROR, "Un ítem de clase en vivo lleva exactamente una pregunta, sin follow_ups; tiene {count}"),
     "E082": (Severity.ERROR, "El tipo {type!r} no se puede responder en vivo (use choice, multi_choice, true_false, numeric o text)"),
     "E083": (Severity.ERROR, "La diapositiva {number} usa aleatorización; en clase en vivo todos ven lo mismo, sin generador ni marcadores"),
@@ -61,6 +61,11 @@ CATALOG: dict[str, tuple[Severity, str]] = {
     "E085": (Severity.ERROR, "'{key}' debe ser true o false; tiene {found!r}"),
     "E091": (Severity.ERROR, "max_files inválido ({value}): debe ser un entero entre {low} y {high}"),
     "E092": (Severity.ERROR, "El ítem usa aleatorización (generador, variables o marcadores); las actividades aún no admiten variantes por estudiante"),
+    "E086": (Severity.ERROR, "use inválido ({found!r}): debe ser class (clase en vivo), activity (actividad) o evaluation (evaluación)"),
+    "W087": (Severity.WARNING, "'{key}' no se usa en {use}: se ignora"),
+    "E093": (Severity.ERROR, "Una encuesta (grading.mode: survey) no tiene opciones correctas"),
+    "E094": (Severity.ERROR, "Una encuesta no da puntos; tiene points: {points}"),
+    "E095": (Severity.ERROR, "grading.mode {mode!r} no existe para {type!r} (admite: {allowed})"),
 }
 
 

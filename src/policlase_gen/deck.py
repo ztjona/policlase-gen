@@ -90,7 +90,7 @@ def validate_deck(document: Any, *, path: Path | str = "<memoria>", report: Repo
     for number, slide in enumerate(slides, start=1):
         at = {**here, "line": loader.line_of(slides, number - 1)}
         if not isinstance(slide, dict):
-            report.add("E080", number=number, **at)
+            report.add("E080", number=number, allowed="'markdown' o 'item'", **at)
             continue
         for key in set(slide) - SLIDE_KEYS:
             report.add("E001", key=f"slides[{number}].{key}", **at)
@@ -99,7 +99,7 @@ def validate_deck(document: Any, *, path: Path | str = "<memoria>", report: Repo
 
         has_markdown, has_item = "markdown" in slide, "item" in slide
         if has_markdown == has_item:
-            report.add("E080", number=number, **at)
+            report.add("E080", number=number, allowed="'markdown' o 'item'", **at)
             continue
 
         if has_markdown:
@@ -162,6 +162,33 @@ def _limit(container: Any, inherited: int | None) -> int | None:
     return UNLIMITED if _unlimited(value) else int(value)
 
 
+def compile_slide(slide: dict, limit: int | None, at: int) -> dict:
+    """Una diapositiva compilada. `limit` es el tiempo que rige donde está (el del ítem, si lo
+    declara en `lecture`, manda); `at`, su posición en la lista del archivo, para que el editor
+    la ubique."""
+    hidden = slide.get("hidden") is True
+    if "markdown" in slide:
+        return {"kind": "content", "markdown": str(slide["markdown"] or ""),
+                "notes": str(slide.get("notes") or ""), "hidden": hidden, "at": at}
+    item = slide["item"]
+    rendered = build.render_item(item, {}, seed=0)
+    question = rendered["public"]["questions"][0]
+    record = rendered["solutions"].get(question["id"], {})
+    return {
+        "kind": "question",
+        "item_id": str(item.get("id")),
+        "item_version": build.item_version(item),
+        "stem": rendered["public"].get("stem", ""),
+        "question": question,
+        "solution": record,
+        "points": question_points(question),
+        "time_limit_s": _limit(item.get("lecture") or {}, limit),
+        "notes": str(slide.get("notes") or ""),
+        "hidden": hidden,
+        "at": at,
+    }
+
+
 def compile_deck(document: dict) -> dict:
     """Convierte una presentación válida en la forma que usa la plataforma en vivo.
 
@@ -172,32 +199,7 @@ def compile_deck(document: dict) -> dict:
     """
     defaults = document.get("defaults") or {}
     default_limit = _limit(defaults, DEFAULT_TIME_LIMIT_S)
-    slides = []
-
-    for slide in document.get("slides") or []:
-        hidden = slide.get("hidden") is True
-        if "markdown" in slide:
-            slides.append({"kind": "content", "markdown": str(slide["markdown"] or ""),
-                           "notes": str(slide.get("notes") or ""), "hidden": hidden})
-            continue
-
-        item = slide["item"]
-        rendered = build.render_item(item, {}, seed=0)
-        question = rendered["public"]["questions"][0]
-        record = rendered["solutions"].get(question["id"], {})
-        lecture = item.get("lecture") or {}
-        slides.append({
-            "kind": "question",
-            "item_id": str(item.get("id")),
-            "item_version": build.item_version(item),
-            "stem": rendered["public"].get("stem", ""),
-            "question": question,
-            "solution": record,
-            "points": question_points(question),
-            "time_limit_s": _limit(lecture, default_limit),
-            "notes": str(slide.get("notes") or ""),
-            "hidden": hidden,
-        })
+    slides = [compile_slide(slide, default_limit, at) for at, slide in enumerate(document.get("slides") or [])]
 
     # Retroalimentación anónima de la clase: siempre al final, salvo `feedback: false`. Se
     # compila igual (oculta) para que el editor pueda mostrarla y reactivarla.

@@ -99,6 +99,42 @@ def _flatten(questions: list[dict], follow_up: bool = False) -> list[dict]:
     return out
 
 
+def compile_item(item: dict, at: int, time_limit_s: int | None = None, block_paste: bool = False) -> dict:
+    """Un ítem compilado para responder a su paso. `time_limit_s` y `block_paste` son los del
+    segmento donde está (formato único); `at`, su posición en el archivo. Devuelve además
+    `_review` y `_ai` para quien arma la actividad completa, que los retira."""
+    rendered = build.render_item(item, {}, seed=0)
+    questions = _flatten(rendered["public"]["questions"])
+    solutions = rendered["solutions"]
+    review = ai = False
+    for question in questions:
+        question["key"] = f"{item.get('id')}.{question['id']}"
+        question["time_limit_s"] = time_limit_s
+        question["block_paste"] = bool(block_paste)
+        if question["type"] in REVIEW_TYPES:
+            review = True
+            grading = question.get("grading") or {}
+            ai = ai or grading.get("mode") == "ai"
+            # En una actividad la rúbrica es pública: el estudiante sabe con qué se le califica.
+            # La respuesta de referencia (`reference`) sigue siendo solo del calificador.
+            rubric = (solutions.get(question["id"], {}).get("grading") or {}).get("rubric")
+            if rubric:
+                question["rubric"] = [{"criterion": str(r.get("criterion", "")),
+                                       "points": float(r.get("points", 0))} for r in rubric]
+    return {
+        "kind": "item",
+        "item_id": str(item.get("id")),
+        "item_version": build.item_version(item),
+        "stem": rendered["public"].get("stem", ""),
+        "points": sum(question_points(q) for q in questions),
+        "questions": loader.plain(questions),
+        "solutions": loader.plain(solutions),
+        "at": at,
+        "_review": review,
+        "_ai": ai,
+    }
+
+
 def compile_activity(document: dict) -> dict:
     """Convierte una actividad válida en la forma que usa la plataforma.
 
@@ -108,32 +144,12 @@ def compile_activity(document: dict) -> dict:
     altera lo que respondió quien ya la entregó.
     """
     items, total, review, ai = [], 0.0, False, False
-    for item in document.get("items") or []:
-        rendered = build.render_item(item, {}, seed=0)
-        questions = _flatten(rendered["public"]["questions"])
-        solutions = rendered["solutions"]
-        for question in questions:
-            question["key"] = f"{item.get('id')}.{question['id']}"
-            if question["type"] in REVIEW_TYPES:
-                review = True
-                grading = question.get("grading") or {}
-                ai = ai or grading.get("mode") == "ai"
-                # En una actividad la rúbrica es pública: el estudiante sabe con qué se le califica.
-                # La respuesta de referencia (`reference`) sigue siendo solo del calificador.
-                rubric = (solutions.get(question["id"], {}).get("grading") or {}).get("rubric")
-                if rubric:
-                    question["rubric"] = [{"criterion": str(r.get("criterion", "")),
-                                           "points": float(r.get("points", 0))} for r in rubric]
-        points = sum(question_points(q) for q in questions)
-        total += points
-        items.append({
-            "item_id": str(item.get("id")),
-            "item_version": build.item_version(item),
-            "stem": rendered["public"].get("stem", ""),
-            "points": points,
-            "questions": questions,
-            "solutions": solutions,
-        })
+    for at, item in enumerate(document.get("items") or []):
+        block = compile_item(item, at)
+        items.append(block)
+        total += block["points"]
+        review = review or block.pop("_review")
+        ai = ai or block.pop("_ai")
     return {
         "schema": COMPILED_SCHEMA,
         "title": str(document.get("title") or ""),

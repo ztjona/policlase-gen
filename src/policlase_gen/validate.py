@@ -13,7 +13,7 @@ from typing import Any
 from . import generator as gen
 from . import loader, template
 from .errors import Report
-from .points import DEFAULT_POINTS
+from .points import is_survey, question_points
 from .grading import expression as expr
 
 SCHEMA_VERSIONS = {"policlase.item/v1"}
@@ -37,6 +37,9 @@ QUESTION_TYPES = {
 NUMERIC_TYPES = {"numeric", "numeric_list"}
 #: Tipos que califica una persona (o la IA con revisión): llevan rúbrica, no `solution`.
 REVIEW_TYPES = {"open", "image"}
+#: Valores de `grading.mode` por tipo: quién califica (open/image) o si es una encuesta (choice).
+MODES = {"open": ("manual", "ai"), "image": ("manual", "ai"),
+         "choice": ("survey",), "multi_choice": ("survey",)}
 #: Imágenes por respuesta de una pregunta `image` (`max_files`, 1 por omisión).
 MAX_FILES_RANGE = (1, 10)
 
@@ -71,12 +74,9 @@ def validate_file(
     for fix in repairs:
         report.add("W061", sequences=", ".join(fix["sequences"]), file=str(path), line=fix["line"])
 
-    from .activity import is_activity, validate_activity   # diferidos: importan este módulo
-    from .deck import is_deck, validate_deck
-    if is_deck(document):
-        return validate_deck(document, path=path, report=report)
-    if is_activity(document):
-        return validate_activity(document, path=path, report=report)
+    from .document import kind_of, is_document, validate_content   # diferido: importa este módulo
+    if kind_of(document) or is_document(document):
+        return validate_content(document, path=path, report=report)
 
     return validate_document(
         document, path=path, report=report, run_generators=run_generators,
@@ -222,7 +222,7 @@ def _validate_question(question, *, report, path, item_id, seen) -> float:
         report.add("E040", type=kind, **{**at, "line": loader.line_of(question, "type")})
         kind = None
 
-    points = question.get("points", DEFAULT_POINTS)            # por omisión, 1
+    points = question.get("points", question_points(question))   # por omisión, 1 (encuesta: 0)
     if not isinstance(points, (int, float)) or isinstance(points, bool):
         report.add("E004", key="points", expected="number",
                    found=type(points).__name__, **at)
@@ -272,7 +272,13 @@ def _validate_question(question, *, report, path, item_id, seen) -> float:
         nota = question.get("none_of_the_above")
         nota_correct = isinstance(nota, dict) and bool(nota.get("correct"))
 
-        if kind == "choice":
+        if is_survey(question):
+            # Encuesta: se registra lo elegido; no hay correcta ni puntos.
+            if correct or nota_correct:
+                report.add("E093", **at)
+            if points:
+                report.add("E094", points=_pretty(points), **{**at, "line": loader.line_of(question, "points")})
+        elif kind == "choice":
             if len(correct) + (1 if nota_correct else 0) != 1:
                 report.add("E043", count=len(correct) + (1 if nota_correct else 0), **at)
             if nota and not nota_correct:
@@ -304,6 +310,11 @@ def _validate_question(question, *, report, path, item_id, seen) -> float:
         if isinstance(max_files, bool) or not isinstance(max_files, int) or not low <= max_files <= high:
             report.add("E091", value=max_files, low=low, high=high,
                        **{**at, "line": loader.line_of(question, "max_files")})
+
+    mode = grading.get("mode") if isinstance(grading, dict) else None
+    if mode is not None and mode not in MODES.get(kind, ()):
+        report.add("E095", mode=mode, type=kind, allowed=", ".join(MODES.get(kind, ())) or "—",
+                   **{**at, "line": loader.line_of(grading, "mode")})
 
     if kind in REVIEW_TYPES:
         mode = grading.get("mode", "manual")
