@@ -208,6 +208,11 @@ misma salida, y evita que HTML no saneado llegue al navegador.
 El HTML crudo en el markdown se descarta, no se escapa. Un error de sintaxis de KaTeX es un error de
 validación (`E060`), no un cuadro rojo en la pantalla del estudiante.
 
+Las imágenes usan la sintaxis de markdown: `![descripción](ruta)`. Una dirección `https://…` se
+muestra tal cual. Una ruta relativa (`img/error.png`, o `/comun/logo.png` desde la carpeta del curso)
+la resuelve la plataforma cuando el curso está vinculado a un repositorio: relativa al archivo que la
+cita, como en GitHub. El validador no comprueba que la imagen exista; la plataforma lo avisa.
+
 ---
 
 ## 7. Contrato del generador
