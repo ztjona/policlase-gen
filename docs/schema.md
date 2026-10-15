@@ -603,7 +603,7 @@ slides:
 |---|---|---|---|
 | `schema` | string | **requerido** | `policlase/v1`. |
 | `title` | string | **requerido** | Título que ven docente y estudiantes. |
-| `use` | `class` · `activity` · `evaluation` | **requerido** | Clase en vivo (pestaña Clases), actividad (pestaña Actividades) o evaluación (pestaña Evaluaciones, próximamente). `E086` si es otro valor. |
+| `use` | `class` · `activity` · `evaluation` | **requerido** | Clase en vivo (pestaña Clases), actividad (pestaña Actividades) o evaluación (pestaña Evaluaciones). `E086` si es otro valor. |
 | `instructions` | string (markdown) | opcional | Indicaciones generales (actividades y evaluaciones). |
 | `slides` | array | **requerido** | Cada elemento tiene **exactamente una** de `markdown`, `item`, `segment` o `solution` (`E080`), y al menos uno es contenido o un ítem (`E004`). |
 | `slides[].markdown` | string | — | Contenido: markdown con matemáticas. En una actividad se lee entre los ítems. |
@@ -755,6 +755,10 @@ Para que queden asentadas (implementación: `policlase/apps/activities/engine.py
   lo que tenga, como entrega a tiempo; una respuesta ilegible vale cero, como una en blanco. Si el
   docente mueve después la fecha hacia adelante, vuelve a ser borrador (salvo que ya lo haya
   calificado a mano).
+- **Evaluaciones** (`use: evaluation`): un intento, sin entregas atrasadas, dentro de su horario y
+  con el código que el docente proyecta en el aula. Si hay duración, cada estudiante la tiene desde
+  que empieza, sin pasar del cierre; al acabarse, se envía con lo guardado. El estudiante no ve su
+  puntaje ni su corrección hasta que el docente publica las notas; la revisión empieza entonces.
 - **Secciones deshabilitadas:** el docente puede deshabilitar ítems o secciones enteras (la parte de
   un taller a la que no se llegó en clase). El estudiante no las ve, no suman ni cuentan en el máximo,
   y se aplica a todos los intentos, también a los ya enviados; ninguna respuesta se borra.
@@ -851,8 +855,9 @@ mismo.
   línea (`open`), así que no hacen falta PDF ni otros formatos.
 - **Variantes por estudiante en actividades.** El formato las admite (§7), pero la plataforma aún
   no recibe las variantes compiladas (`E092`).
-- **Evaluaciones (`use: evaluation`).** El formato las admite (§9); la plataforma las recibirá con la
-  pestaña Evaluaciones (una sola vez, en una ventana de tiempo).
+- **Evaluaciones (`use: evaluation`).** La plataforma las recibe desde policlase 0.15: una sola vez, en
+  un horario, con duración por estudiante, código de acceso y notas que el docente publica (§10).
+  Las mismas preguntas para todos; las variantes por estudiante (§7) quedan para una segunda etapa.
 - **Respuestas en LaTeX calificadas.** `expression` compara expresiones de una línea; leer LaTeX
   (`\frac`, `\sqrt`, sumatorias, integrales) y evaluarlo por valor queda para más adelante.
 - **Calificación asistida por IA.** Pendiente de la revisión de la política de privacidad de la
