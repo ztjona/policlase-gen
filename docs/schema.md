@@ -593,6 +593,10 @@ slides:
         - { id: q1, type: text, prompt: 'Escriba la barra invertida.', grading: { accept: ['\'], normalize: [] } }
 
   - segment: {}                     # vuelve a lo del documento
+
+  - solution: |                     # solución: se muestra en la revisión, al vencer la fecha
+      ## Cómo escribir la barra invertida
+      En el teclado latinoamericano: AltGr + `?`.
 ```
 
 | Campo | Tipo | | Descripción |
@@ -601,8 +605,9 @@ slides:
 | `title` | string | **requerido** | Título que ven docente y estudiantes. |
 | `use` | `class` · `activity` · `evaluation` | **requerido** | Clase en vivo (pestaña Clases), actividad (pestaña Actividades) o evaluación (pestaña Evaluaciones, próximamente). `E086` si es otro valor. |
 | `instructions` | string (markdown) | opcional | Indicaciones generales (actividades y evaluaciones). |
-| `slides` | array | **requerido** | Cada elemento tiene **exactamente una** de `markdown`, `item` o `segment` (`E080`), y al menos uno no es un segmento (`E004`). |
+| `slides` | array | **requerido** | Cada elemento tiene **exactamente una** de `markdown`, `item`, `segment` o `solution` (`E080`), y al menos uno es contenido o un ítem (`E004`). |
 | `slides[].markdown` | string | — | Contenido: markdown con matemáticas. En una actividad se lee entre los ítems. |
+| `slides[].solution` | string | — | Solución o explicación (markdown con matemáticas). En una actividad o evaluación, el estudiante **no la ve mientras responde**: aparece en la revisión, cuando vence la fecha de entrega (§10). En una clase en vivo se ignora con un aviso (`W096`). |
 | `slides[].item` | item | — | Un ítem ordinario (§5). En una clase, con las restricciones de abajo. |
 | `slides[].segment` | mapping | — | Cambia el comportamiento desde aquí hasta el próximo segmento: `title`, `instructions` y las claves de comportamiento. Cada segmento parte de lo del documento. |
 | `slides[].notes` | string | opcional | Notas para el docente. |
@@ -625,8 +630,10 @@ En una clase, `item.lecture.time_limit_s` todavía manda sobre el segmento para 
 **Forma compilada** (`policlase_gen.document.compile_content`): la de una presentación para
 `use: class` (§9, abajo) y la de una actividad para `activity` y `evaluation` (§10), con estos
 agregados: cada pregunta de una actividad lleva su `time_limit_s` y su `block_paste`; los segmentos
-y las diapositivas de contenido aparecen como bloques (`kind: segment` / `content`) entre los ítems
-(`kind: item`); y todo lo compilado lleva `at`, su posición en `slides`, para que el editor lo ubique.
+y las diapositivas de contenido y de solución aparecen como bloques (`kind: segment` / `content` /
+`solution`) entre los ítems (`kind: item`); cada ítem lleva su `title` (vacío si no lo tiene), para
+el índice del intento; y todo lo compilado lleva `at`, su posición en `slides`, para que el editor lo
+ubique.
 
 **Formatos anteriores.** `policlase.deck/v1` (una clase) y `policlase.activity/v1` (una actividad,
 §10) se siguen aceptando y compilan igual; no tienen segmentos. En una presentación `deck/v1`:
@@ -737,7 +744,20 @@ Para que queden asentadas (implementación: `policlase/apps/activities/engine.py
 `apps/grades/gradebook.py`):
 
 - **Cuenta el último intento enviado.** Entre intentos el estudiante ve su puntaje; la corrección
-  detallada, cuando vence la fecha (o se le acaban los intentos).
+  detallada, en la revisión (o cuando se le acaban los intentos).
+- **Revisión:** desde que vence la fecha de entrega hasta su cierre, que decide el docente (sin
+  límite, hasta una fecha relativa a una fecha clave —por ejemplo, el día de la prueba— o hasta una
+  fecha fija; o sin revisión). Durante ella, el estudiante ve su corrección detallada y las
+  diapositivas `solution`; después, solo su puntaje. Quien no entregó las ve únicamente cuando ya no
+  puede entregar (atrasos bloqueados o vencidos): verlas antes sería responder con las soluciones a
+  la vista.
+- **Envío automático** (por omisión): al vencer la fecha, el borrador empezado a tiempo se envía con
+  lo que tenga, como entrega a tiempo; una respuesta ilegible vale cero, como una en blanco. Si el
+  docente mueve después la fecha hacia adelante, vuelve a ser borrador (salvo que ya lo haya
+  calificado a mano).
+- **Partes que no se califican:** el docente puede excluir ítems de la nota (la parte de un taller
+  a la que no se llegó en clase). Siguen visibles como práctica, no suman ni cuentan en el máximo, y
+  se aplica a todos los intentos, también a los ya enviados; ninguna respuesta se borra.
 - Una pregunta en blanco vale cero; una respuesta ilegible («uno coma cuatro» en una numérica) se
   devuelve para corregir antes de enviar.
 - **Preguntas con tiempo** (`time_limit_s` en un segmento, §9): no se ven hasta que el estudiante
@@ -790,7 +810,7 @@ iteración local. Los códigos `I` son informativos y nunca bloquean.
 | `W061` | aviso | LaTeX entre comillas dobles: un escape de YAML se tragó un comando; se corrigió. |
 | `W070` | aviso | `none_of_the_above` nunca es correcta en ninguna variante. |
 | `W071` | aviso | `multi_choice` con `partial: per_option` y `penalty` &lt; 1.0. |
-| `E080` | error | Diapositiva sin `markdown`, `item` ni `segment`, o con más de uno. |
+| `E080` | error | Diapositiva sin `markdown`, `item`, `segment` ni `solution`, o con más de uno. |
 | `E081` | error | Ítem en vivo con más de una pregunta o con `follow_ups`. |
 | `E082` | error | Tipo de pregunta no respondible en vivo. |
 | `E083` | error | Aleatorización en una presentación (generador, variables o marcadores). |
@@ -803,6 +823,7 @@ iteración local. Los códigos `I` son informativos y nunca bloquean.
 | `E093` | error | Una encuesta con una opción marcada como correcta. |
 | `E094` | error | Una encuesta con `points` distinto de 0. |
 | `E095` | error | `grading.mode` que no existe para el tipo (`manual`/`ai` en `open` e `image`; `survey` en `choice` y `multi_choice`). |
+| `W096` | aviso | Una diapositiva `solution` en una clase en vivo (se ignora: las soluciones son de la revisión de actividades y evaluaciones). |
 
 Cada mensaje cita archivo, línea, `id` del ítem y, cuando aplica, la semilla que reprodujo el fallo
 —de modo que `policlase build --seed 47` lo reproduce de inmediato.

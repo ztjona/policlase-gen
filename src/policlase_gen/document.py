@@ -18,6 +18,8 @@ siguen, hasta el próximo segmento:
           time_limit_s: 15
           block_paste: true
       - item: { id: U00-barra, questions: [...] }
+      - solution: |                # solución: el estudiante la ve en la revisión, al vencer la fecha
+          La barra invertida está en AltGr + ?.
 
 Los comportamientos se escriben en la raíz (valen para todo el documento) o en un segmento (para
 sus diapositivas); `use` pone los valores por omisión (`PROFILES`), y cada segmento parte de los
@@ -52,9 +54,12 @@ PROFILES = {
 }
 
 ROOT_KEYS = {"schema", "title", "use", "instructions", "slides", "meta"} | BEHAVIOR
-SLIDE_KEYS = {"markdown", "item", "segment", "notes", "hidden"}
+SLIDE_KEYS = {"markdown", "item", "segment", "solution", "notes", "hidden"}
 SEGMENT_KEYS = {"title", "instructions", "time_limit_s", "block_paste"}
-ALLOWED = "'markdown', 'item' o 'segment'"
+#: Lo que puede ser una diapositiva. `solution` es contenido que el estudiante ve solo en la revisión,
+#: cuando vence la fecha de entrega (actividades y evaluaciones).
+KINDS = ("markdown", "item", "segment", "solution")
+ALLOWED = "'markdown', 'item', 'segment' o 'solution'"
 
 
 def is_document(document: Any) -> bool:
@@ -137,7 +142,7 @@ def validate_v1(document: Any, *, path: Path | str = "<memoria>", report: Report
         if not isinstance(slide, dict):
             report.add("E080", number=number, allowed=ALLOWED, **at)
             continue
-        present = [k for k in ("markdown", "item", "segment") if k in slide]
+        present = [k for k in KINDS if k in slide]
         if len(present) != 1:
             report.add("E080", number=number, allowed=ALLOWED, **at)
             continue
@@ -164,6 +169,15 @@ def validate_v1(document: Any, *, path: Path | str = "<memoria>", report: Report
                 if key in segment:
                     _check_math(segment[key], f"segmento {number}", report,
                                 {**here, "line": loader.line_of(segment, key)})
+            continue
+
+        if kind == "solution":
+            text = str(slide["solution"] or "")
+            _check_math(text, f"diapositiva {number}", report, at)
+            if template.placeholders(text):
+                report.add("E083" if use == "class" else "E092", number=number, item_id=None, **at)
+            if use == "class":
+                report.add("W096", number=number, **at)
             continue
 
         content += 1
@@ -254,6 +268,8 @@ def _compile_class(document: dict) -> dict:
         if starts:
             segments.append(segment)
             continue
+        if "solution" in slide:                       # en clase no se usa (W096)
+            continue
         compiled = deck.compile_slide(slide, current["time_limit_s"], at)
         if segment and segment["title"]:
             compiled["segment"] = segment["title"]
@@ -278,6 +294,10 @@ def _compile_work(document: dict, use: str) -> dict:
         if "markdown" in slide:
             blocks.append({"kind": "content", "item_id": "", "questions": [], "points": 0.0,
                            "markdown": str(slide["markdown"] or ""), "at": at})
+            continue
+        if "solution" in slide:
+            blocks.append({"kind": "solution", "item_id": "", "questions": [], "points": 0.0,
+                           "markdown": str(slide["solution"] or ""), "at": at})
             continue
         block = activity.compile_item(slide["item"], at, current["time_limit_s"], current["block_paste"])
         review = review or block.pop("_review")

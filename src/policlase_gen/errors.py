@@ -66,6 +66,7 @@ CATALOG: dict[str, tuple[Severity, str]] = {
     "E093": (Severity.ERROR, "Una encuesta (grading.mode: survey) no tiene opciones correctas"),
     "E094": (Severity.ERROR, "Una encuesta no da puntos; tiene points: {points}"),
     "E095": (Severity.ERROR, "grading.mode {mode!r} no existe para {type!r} (admite: {allowed})"),
+    "W096": (Severity.WARNING, "La diapositiva {number} es una solución; las soluciones se muestran en la revisión de actividades y evaluaciones, y en una clase en vivo se ignoran"),
 }
 
 

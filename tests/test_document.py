@@ -127,3 +127,28 @@ def test_encuesta():
     assert "E093" in codes(SOURCE.replace("options: [{ text: 'Latinoamérica' }", "options: [{ text: 'Latinoamérica', correct: true }"))
     assert "E094" in codes(SOURCE.replace("grading: { mode: survey }", "grading: { mode: survey }\n          points: 2"))
     assert "E095" in codes(SOURCE.replace("grading: { mode: survey }", "grading: { mode: encuesta }"))
+
+
+def test_diapositiva_de_solucion():
+    text = SOURCE.replace("  - segment: {}\n", "  - solution: |\n      La barra invertida: $\\\\backslash$.\n  - segment: {}\n")
+    document, report, _ = doc.load_text(text)
+    assert report.errors == [] and report.warnings == []
+    compiled = doc.compile_content(document)
+    solution = next(b for b in compiled["items"] if b["kind"] == "solution")
+    assert solution["at"] == 4 and "barra invertida" in solution["markdown"]
+    assert solution["questions"] == [] and solution["points"] == 0
+    assert compiled["points"] == 2                                   # no cambia el puntaje
+    # En una clase en vivo se avisa y se ignora.
+    clase = text.replace("use: activity", "use: class").replace(", block_paste: true", "")
+    document, report, _ = doc.load_text(clase)
+    assert [d.code for d in report] == ["W096"]
+    assert all(s["kind"] != "solution" for s in doc.compile_content(document)["slides"])
+    assert "E060" in codes(text.replace("$\\\\backslash$", "$x"))
+    assert "E080" in codes(SOURCE.replace("  - markdown: '## Teclado'", "  - { markdown: 'x', solution: 'y' }"))
+
+
+def test_el_titulo_del_item_se_compila():
+    text = SOURCE.replace("      id: U00-teclado\n", "      id: U00-teclado\n      title: 'Distribución del teclado'\n")
+    compiled = doc.compile_content(doc.load_text(text)[0])
+    titles = [b.get("title") for b in compiled["items"] if b["kind"] == "item"]
+    assert titles == ["Distribución del teclado", "", ""]

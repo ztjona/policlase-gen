@@ -125,6 +125,8 @@ def compile_item(item: dict, at: int, time_limit_s: int | None = None, block_pas
         "kind": "item",
         "item_id": str(item.get("id")),
         "item_version": build.item_version(item),
+        #: Para el índice del intento; puede venir vacío.
+        "title": str(item.get("title") or ""),
         "stem": rendered["public"].get("stem", ""),
         "points": sum(question_points(q) for q in questions),
         "questions": loader.plain(questions),
