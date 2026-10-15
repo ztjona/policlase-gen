@@ -755,9 +755,11 @@ Para que queden asentadas (implementación: `policlase/apps/activities/engine.py
   lo que tenga, como entrega a tiempo; una respuesta ilegible vale cero, como una en blanco. Si el
   docente mueve después la fecha hacia adelante, vuelve a ser borrador (salvo que ya lo haya
   calificado a mano).
-- **Partes que no se califican:** el docente puede excluir ítems de la nota (la parte de un taller
-  a la que no se llegó en clase). Siguen visibles como práctica, no suman ni cuentan en el máximo, y
-  se aplica a todos los intentos, también a los ya enviados; ninguna respuesta se borra.
+- **Secciones deshabilitadas:** el docente puede deshabilitar ítems o secciones enteras (la parte de
+  un taller a la que no se llegó en clase). El estudiante no las ve, no suman ni cuentan en el máximo,
+  y se aplica a todos los intentos, también a los ya enviados; ninguna respuesta se borra.
+- **Las soluciones son las de la versión vigente:** la revisión muestra las diapositivas `solution`
+  de la actividad actual, también a quien empezó antes de que se escribieran.
 - Una pregunta en blanco vale cero; una respuesta ilegible («uno coma cuatro» en una numérica) se
   devuelve para corregir antes de enviar.
 - **Preguntas con tiempo** (`time_limit_s` en un segmento, §9): no se ven hasta que el estudiante
