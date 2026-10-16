@@ -1,4 +1,4 @@
-"""Evaluador de expresiones algebraicas (docs/schema.md §8, tipo ``expression``).
+"""Evaluador de expresiones algebraicas (docs/schema/03-items-y-preguntas.md, tipo ``expression``).
 
 Este es el único calificador que evalúa texto escrito por el estudiante, y por eso es la
 pieza que hay que auditar. Tres decisiones sostienen su seguridad:

@@ -94,8 +94,8 @@ def test_E020_marcador_no_declarado():
     assert "E020" in codes(BASE.replace('"¿Cuánto es dos más dos?"', '"¿Cuánto es {{ a }} + 2?"'))
 
 
-def test_E021_variable_declarada_sin_usar():
-    assert "E021" in codes("""
+def test_W021_variable_declarada_sin_usar():
+    assert "W021" in codes("""
 schema: policlase.item/v1
 items:
   - id: U01-demo
@@ -308,3 +308,14 @@ def test_math_desbalanceado_se_detecta():
     assert template.unbalanced_math("$x + 1$") is None
     assert template.unbalanced_math("$$x$$") is None
     assert template.unbalanced_math("$x + 1") is not None
+
+
+def test_el_catalogo_documentado_tiene_los_mismos_codigos():
+    import re
+    from pathlib import Path
+
+    from policlase_gen.errors import CATALOG
+
+    text = (Path(__file__).resolve().parents[1] / "docs" / "schema" / "07-validacion.md").read_text(encoding="utf-8")
+    documented = set(re.findall(r"^\| `([EWI]\d{3})` \|", text, re.M))
+    assert documented == set(CATALOG)

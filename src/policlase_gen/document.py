@@ -1,4 +1,4 @@
-"""Formato único (docs/schema.md §9): clases en vivo, actividades y evaluaciones.
+"""Formato único (docs/schema/05-documentos.md): clases en vivo, actividades, evaluaciones y repasos.
 
 Una sola forma de escribir el contenido —diapositivas de contenido, ítems y segmentos— y un
 `use` que dice para qué es. Un segmento cambia el comportamiento de las diapositivas que le
@@ -141,6 +141,7 @@ def validate_v1(document: Any, *, path: Path | str = "<memoria>", report: Report
 
     seen_ids: dict[str, str] = {}
     content = 0
+    seen_item = False                                  # una solución explica el ítem que la precede
     for number, slide in enumerate(slides, start=1):
         at = {**here, "line": loader.line_of(slides, number - 1)}
         if not isinstance(slide, dict):
@@ -182,6 +183,8 @@ def validate_v1(document: Any, *, path: Path | str = "<memoria>", report: Report
                 report.add("E083" if use == "class" else "E092", number=number, item_id=None, **at)
             if use == "class":
                 report.add("W096", number=number, **at)
+            elif not seen_item:
+                report.add("W099", number=number, **at)
             continue
 
         content += 1
@@ -197,6 +200,7 @@ def validate_v1(document: Any, *, path: Path | str = "<memoria>", report: Report
             report.add("E004", key=f"slides[{number}].item", expected="mapping",
                        found=type(item).__name__, **at)
             continue
+        seen_item = True
         _validate_item(item, report=report, path=path, root=path.parent, seen_ids=seen_ids,
                        run_generators=False, enrolled=0, max_seeds=None)
         item_at = {**here, "item_id": item.get("id"), "line": loader.line_of(item)}
@@ -303,6 +307,7 @@ def _compile_class(document: dict) -> dict:
 
 def _compile_work(document: dict, use: str) -> dict:
     blocks, total, review, ai = [], 0.0, False, False
+    last = None                                        # el ítem que explica la próxima solución
     for at, slide, current, segment, starts in _walk(document, use):
         if starts:
             blocks.append({"kind": "segment", "item_id": "", "questions": [], "points": 0.0, **segment})
@@ -315,7 +320,8 @@ def _compile_work(document: dict, use: str) -> dict:
             continue
         if "solution" in slide:
             blocks.append({"kind": "solution", "item_id": "", "questions": [], "points": 0.0,
-                           "markdown": str(slide["solution"] or ""), "at": at})
+                           "markdown": str(slide["solution"] or ""), "at": at,
+                           "explains": last["item_id"] if last else "", "explains_title": last["title"] if last else ""})
             continue
         block = activity.compile_item(slide["item"], at, current["time_limit_s"], current["block_paste"])
         if use != "activity":                          # el debate solo existe en las actividades (W097)
@@ -325,6 +331,7 @@ def _compile_work(document: dict, use: str) -> dict:
         ai = ai or block.pop("_ai")
         total += block["points"]
         blocks.append(block)
+        last = block
     return {"schema": activity.COMPILED_SCHEMA, "use": use,
             "title": str(document.get("title") or ""),
             "instructions": str(document.get("instructions") or ""),

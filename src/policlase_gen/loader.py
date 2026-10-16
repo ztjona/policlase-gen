@@ -1,6 +1,6 @@
 r"""Carga de archivos YAML de ítems.
 
-Dos reglas, ninguna estilística (docs/schema.md §3):
+Dos reglas, ninguna estilística (docs/schema/02-yaml-plantillas-markdown.md):
 
 * **Carga segura.** El constructor de ruamel en modo round-trip desciende de SafeConstructor,
   así que no instancia objetos Python arbitrarios a partir de etiquetas del documento. Los

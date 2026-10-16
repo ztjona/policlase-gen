@@ -1,4 +1,4 @@
-"""Sustitución de marcadores ``{{ var | filtro(args) }}`` (docs/schema.md §6).
+"""Sustitución de marcadores ``{{ var | filtro(args) }}`` (docs/schema/02-yaml-plantillas-markdown.md).
 
 Los valores llegan estructurados desde el generador y se les da formato aquí. Un generador
 nunca debe devolver una cadena ya formateada como ``"[-5, 4]"``: eso impide que el

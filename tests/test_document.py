@@ -187,3 +187,13 @@ def test_un_repaso_no_tiene_tiempo_ni_debate():
     assert questions["U00-barra.q1"]["time_limit_s"] is None
     assert questions["U00-barra.q1"]["block_paste"] is True                # pegar sí se puede bloquear
     assert "debate" not in questions["U00-fin.q1"]
+
+
+def test_la_solucion_explica_el_item_anterior():
+    text = SOURCE + "  - solution: 'La suma da cuatro.'\n"
+    document, report, _ = doc.load_text(text)
+    assert report.warnings == []
+    solution = doc.compile_content(document)["items"][-1]
+    assert (solution["kind"], solution["explains"]) == ("solution", "U00-fin")
+    orphan = SOURCE.replace("slides:\n", "slides:\n  - solution: 'Sin ítem antes.'\n", 1)
+    assert "W099" in codes(orphan)

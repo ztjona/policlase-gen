@@ -1,4 +1,4 @@
-"""Calificadores numéricos: ``numeric`` y ``numeric_list`` (docs/schema.md §8)."""
+"""Calificadores numéricos: ``numeric`` y ``numeric_list`` (docs/schema/03-items-y-preguntas.md)."""
 
 from __future__ import annotations
 

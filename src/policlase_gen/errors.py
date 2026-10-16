@@ -21,7 +21,7 @@ class Severity(enum.Enum):
         return self is Severity.ERROR
 
 
-#: Código -> (severidad, plantilla del mensaje). Ver docs/schema.md §11.
+#: Código -> (severidad, plantilla del mensaje). Ver docs/schema/07-validacion.md.
 CATALOG: dict[str, tuple[Severity, str]] = {
     "E001": (Severity.ERROR, "Clave desconocida: {key}"),
     "E002": (Severity.ERROR, "Versión de schema desconocida: {found!r}"),
@@ -31,7 +31,7 @@ CATALOG: dict[str, tuple[Severity, str]] = {
     "E011": (Severity.ERROR, "id inválido {id!r}: solo se permite [a-zA-Z0-9._-]"),
     "E012": (Severity.ERROR, "id de pregunta duplicado dentro del ítem: {id!r}"),
     "E020": (Severity.ERROR, "El marcador {{{{ {name} }}}} no está declarado en variables"),
-    "E021": (Severity.WARNING, "La variable {name!r} está declarada pero no se usa"),
+    "W021": (Severity.WARNING, "La variable {name!r} está declarada pero no se usa"),
     "E022": (Severity.ERROR, "El generador devolvió una clave no declarada: {name!r}"),
     "E023": (Severity.ERROR, "El generador no devolvió la clave declarada: {name!r}"),
     "E024": (Severity.ERROR, "Valor no serializable en {name!r}: {detail}"),
@@ -68,6 +68,7 @@ CATALOG: dict[str, tuple[Severity, str]] = {
     "E095": (Severity.ERROR, "grading.mode {mode!r} no existe para {type!r} (admite: {allowed})"),
     "E098": (Severity.ERROR, "El tipo {type!r} no admite debate (use choice, multi_choice, true_false, numeric, numeric_list, text o expression)"),
     "W097": (Severity.WARNING, "La pregunta {question_id} es de debate; el debate solo existe en las actividades, y en {use} se ignora"),
+    "W099": (Severity.WARNING, "La diapositiva {number} es una solución sin un ítem antes; una solución explica el ítem que la precede"),
     "W096": (Severity.WARNING, "La diapositiva {number} es una solución; las soluciones se muestran en la revisión de actividades y evaluaciones, y en una clase en vivo se ignoran"),
 }
 

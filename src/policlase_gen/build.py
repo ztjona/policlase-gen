@@ -1,4 +1,4 @@
-"""Materialización de variantes (docs/schema.md §1, capa 1 → 2).
+"""Materialización de variantes (docs/schema/01-modelo-y-repositorios.md, capa 1 → 2).
 
 ``build`` corre los generadores y produce las variantes ya renderizadas. Es la frontera del
 sistema: a partir de aquí no vuelve a ejecutarse código de autoría, ni en el servidor ni al
@@ -260,7 +260,7 @@ def build_file(
 
 def assign_seed(course_secret: str, item_id: str, student_id: str,
                 student_name: str, seeds: list[int]) -> int:
-    """Semilla estable y no adivinable para un estudiante (docs/schema.md §7).
+    """Semilla estable y no adivinable para un estudiante (docs/schema/04-generador.md).
 
     El secreto del curso es lo que impide que alguien que conozca la derivación y la cédula
     de un compañero calcule su variante. Se lee del entorno, nunca del repositorio.

@@ -1,4 +1,4 @@
-"""Actividades: deberes, talleres y evidencias (docs/schema.md §10).
+"""Actividades: deberes, talleres y evidencias (docs/schema/05-documentos.md).
 
 Una actividad es un conjunto de ítems que cada estudiante resuelve a su paso, dentro de una
 ventana de tiempo. A diferencia de una presentación, admite todos los tipos de pregunta —también

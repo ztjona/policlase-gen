@@ -1,4 +1,4 @@
-"""Validación de archivos de ítems (docs/schema.md §11).
+"""Validación de archivos de ítems (docs/schema/07-validacion.md).
 
 Corre idéntica en el editor, en el *hook* de pre-commit y en CI. Un error bloquea la
 publicación; un aviso bloquea solo con ``--strict``, que es como corre CI.
@@ -387,7 +387,7 @@ def _validate_variables(item, *, report, path, item_id) -> None:
     for name in sorted(used - declared):
         report.add("E020", name=name, line=loader.line_of(item), **at)
     for name in sorted(declared - used):
-        report.add("E021", name=name, line=loader.line_of(item), **at)
+        report.add("W021", name=name, line=loader.line_of(item), **at)
 
 
 def _validate_math(item, *, report, path, item_id) -> None:

@@ -35,7 +35,7 @@ archivo, línea, ítem y —cuando aplica— la semilla que reprodujo el fallo, 
 
 ## Documentación
 
-- [`docs/schema.md`](docs/schema.md) — referencia normativa del formato y catálogo de diagnósticos.
+- [`docs/schema.md`](docs/schema.md) — referencia normativa del formato, dividida en partes (`docs/schema/`), con el catálogo de diagnósticos.
 - [`policlase/docs/github.md`](../policlase/docs/github.md) — cómo la plataforma sincroniza las presentaciones con un repositorio (carpetas = secciones).
 - [`policlase/docs/guia-de-estilo.md`](../policlase/docs/guia-de-estilo.md) — guía de estilo y patrones de código de ambos repositorios.
 - [`examples/biseccion/`](examples/biseccion/) — dos ítems generados y uno de lección, con sus

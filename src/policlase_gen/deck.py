@@ -1,4 +1,4 @@
-"""Presentaciones para clases en vivo (docs/schema.md §9).
+"""Presentaciones para clases en vivo (docs/schema/05-documentos.md).
 
 Una presentación es una secuencia de diapositivas que el profesor avanza; algunas son de
 contenido (markdown con matemáticas) y otras son preguntas que los estudiantes responden desde

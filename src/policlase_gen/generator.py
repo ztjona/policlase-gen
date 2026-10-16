@@ -1,4 +1,4 @@
-"""Ejecución de generadores (docs/schema.md §7).
+"""Ejecución de generadores (docs/schema/04-generador.md).
 
 Un generador convierte una semilla en una variante. **Corre en el computador del autor**,
 durante ``policlase build``; el servidor solo recibe variantes ya materializadas. Esa
