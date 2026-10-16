@@ -26,7 +26,7 @@ ITEM_KEYS = {
 }
 QUESTION_KEYS = {
     "id", "type", "points", "prompt", "solution", "shape", "options", "statements",
-    "grading", "sample", "none_of_the_above", "follow_ups", "max_files",
+    "grading", "sample", "none_of_the_above", "follow_ups", "max_files", "debate",
 }
 GENERATOR_KEYS = {"file", "entry", "seeds", "timeout_s"}
 
@@ -216,11 +216,16 @@ def _validate_question(question, *, report, path, item_id, seen) -> float:
 
     for key in set(question) - QUESTION_KEYS:
         report.add("E001", key=key, **{**at, "line": loader.line_of(question, key)})
+    if "debate" in question and not isinstance(question["debate"], bool):
+        report.add("E085", key="debate", found=question["debate"], **{**at, "line": loader.line_of(question, "debate")})
 
     kind = question.get("type")
     if kind not in QUESTION_TYPES:
         report.add("E040", type=kind, **{**at, "line": loader.line_of(question, "type")})
         kind = None
+    elif question.get("debate") is True and kind in ("open", "image"):
+        # En el debate, los compañeros ven la respuesta y su justificación: tiene que poder mostrarse breve.
+        report.add("E098", type=kind, **{**at, "line": loader.line_of(question, "debate")})
 
     points = question.get("points", question_points(question))   # por omisión, 1 (encuesta: 0)
     if not isinstance(points, (int, float)) or isinstance(points, bool):

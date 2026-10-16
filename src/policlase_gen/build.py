@@ -92,6 +92,8 @@ def _render_question(question: dict, variables: dict[str, Any], seed: int = 0) -
         rendered["max_files"] = int(question.get("max_files") or 1)
     if is_survey(question):
         rendered["survey"] = True              # la plataforma no muestra correcta ni incorrecta
+    if question.get("debate") is True:
+        rendered["debate"] = True              # se justifica y se discute en un foro (§9)
 
     # La mezcla y el muestreo se materializan aquí: la variante guardada debe ser
     # literalmente lo que el estudiante vio, aunque el ítem se edite después.

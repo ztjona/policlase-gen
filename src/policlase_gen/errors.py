@@ -61,11 +61,13 @@ CATALOG: dict[str, tuple[Severity, str]] = {
     "E085": (Severity.ERROR, "'{key}' debe ser true o false; tiene {found!r}"),
     "E091": (Severity.ERROR, "max_files inválido ({value}): debe ser un entero entre {low} y {high}"),
     "E092": (Severity.ERROR, "El ítem usa aleatorización (generador, variables o marcadores); las actividades aún no admiten variantes por estudiante"),
-    "E086": (Severity.ERROR, "use inválido ({found!r}): debe ser class (clase en vivo), activity (actividad) o evaluation (evaluación)"),
+    "E086": (Severity.ERROR, "use inválido ({found!r}): debe ser class (clase en vivo), activity (actividad), evaluation (evaluación) o practice (repaso)"),
     "W087": (Severity.WARNING, "'{key}' no se usa en {use}: se ignora"),
     "E093": (Severity.ERROR, "Una encuesta (grading.mode: survey) no tiene opciones correctas"),
     "E094": (Severity.ERROR, "Una encuesta no da puntos; tiene points: {points}"),
     "E095": (Severity.ERROR, "grading.mode {mode!r} no existe para {type!r} (admite: {allowed})"),
+    "E098": (Severity.ERROR, "El tipo {type!r} no admite debate (use choice, multi_choice, true_false, numeric, numeric_list, text o expression)"),
+    "W097": (Severity.WARNING, "La pregunta {question_id} es de debate; el debate solo existe en las actividades, y en {use} se ignora"),
     "W096": (Severity.WARNING, "La diapositiva {number} es una solución; las soluciones se muestran en la revisión de actividades y evaluaciones, y en una clase en vivo se ignoran"),
 }
 

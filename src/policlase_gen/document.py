@@ -6,7 +6,7 @@ siguen, hasta el próximo segmento:
 
     schema: policlase/v1
     title: 'Deber 1 — Teclado y LaTeX'
-    use: activity                  # class (clase en vivo) · activity (actividad) · evaluation (evaluación)
+    use: activity                  # class (clase en vivo) · activity (actividad) · evaluation (evaluación) · practice (repaso)
     instructions: |                # se muestran antes de empezar (actividades y evaluaciones)
       Resuelva a su ritmo; la última parte tiene tiempo.
     slides:
@@ -38,19 +38,23 @@ from . import activity, deck, loader, template
 from .errors import Report
 
 VERSION = "policlase/v1"
-USES = ("class", "activity", "evaluation")
-USE_LABELS = {"class": "una clase en vivo", "activity": "una actividad", "evaluation": "una evaluación"}
+USES = ("class", "activity", "evaluation", "practice")
+USE_LABELS = {"class": "una clase en vivo", "activity": "una actividad", "evaluation": "una evaluación",
+              "practice": "un repaso"}
 
 #: Comportamientos y a qué uso aplican. `speed_bonus` y `feedback` son de toda la clase: solo en la raíz.
 BEHAVIOR = {"time_limit_s", "block_paste", "speed_bonus", "feedback"}
 APPLIES = {"class": {"time_limit_s", "speed_bonus", "feedback"},
            "activity": {"time_limit_s", "block_paste"},
-           "evaluation": {"time_limit_s", "block_paste"}}
+           "evaluation": {"time_limit_s", "block_paste"},
+           # Un repaso no tiene tiempo: se practica sin presión, y cada pregunta se comprueba al momento.
+           "practice": {"block_paste"}}
 PROFILES = {
     "class": {"time_limit_s": deck.DEFAULT_TIME_LIMIT_S, "block_paste": False, "speed_bonus": True, "feedback": True},
     "activity": {"time_limit_s": None, "block_paste": False, "speed_bonus": False, "feedback": False},
     # Una evaluación se escribe sin ayuda: pegar viene bloqueado salvo que se diga otra cosa.
     "evaluation": {"time_limit_s": None, "block_paste": True, "speed_bonus": False, "feedback": False},
+    "practice": {"time_limit_s": None, "block_paste": False, "speed_bonus": False, "feedback": False},
 }
 
 ROOT_KEYS = {"schema", "title", "use", "instructions", "slides", "meta"} | BEHAVIOR
@@ -67,7 +71,7 @@ def is_document(document: Any) -> bool:
 
 
 def kind_of(document: Any) -> str | None:
-    """`class`, `activity` o `evaluation` para cualquier formato de contenido; None si no es uno."""
+    """`class`, `activity`, `evaluation` o `practice` para cualquier formato de contenido; None si no es uno."""
     if deck.is_deck(document):
         return "class"
     if activity.is_activity(document):
@@ -196,6 +200,10 @@ def validate_v1(document: Any, *, path: Path | str = "<memoria>", report: Report
         _validate_item(item, report=report, path=path, root=path.parent, seen_ids=seen_ids,
                        run_generators=False, enrolled=0, max_seeds=None)
         item_at = {**here, "item_id": item.get("id"), "line": loader.line_of(item)}
+        if use != "activity":
+            for question in _all_questions(item):
+                if question.get("debate") is True:
+                    report.add("W097", question_id=question.get("id"), use=USE_LABELS[use], **item_at)
         scanned = {k: v for k, v in item.items() if k != "generator"}
         randomized = bool(item.get("generator") or item.get("variables")
                           or any(True for _ in template.iter_placeholders(loader.plain(scanned))))
@@ -226,13 +234,23 @@ def validate_v1(document: Any, *, path: Path | str = "<memoria>", report: Report
 # ------------------------------------------------------------------ compilación
 
 
+def _all_questions(item: dict) -> list[dict]:
+    """Las preguntas de un ítem y sus `follow_ups`."""
+    out = []
+    for question in item.get("questions") or []:
+        if isinstance(question, dict):
+            out.append(question)
+            out.extend(_all_questions({"questions": question.get("follow_ups")}))
+    return out
+
+
 def _settings(document: dict, use: str) -> dict:
     """Comportamiento de todo el documento: los valores de su uso, con lo que declare la raíz."""
     out = dict(PROFILES[use])
     for key in BEHAVIOR & set(document):
         out[key] = document[key]
-    if deck._unlimited(out["time_limit_s"]):
-        out["time_limit_s"] = None
+    if deck._unlimited(out["time_limit_s"]) or "time_limit_s" not in APPLIES[use]:
+        out["time_limit_s"] = None                     # en un repaso no hay tiempo (W087)
     return out
 
 
@@ -243,7 +261,7 @@ def _walk(document: dict, use: str):
     for at, slide in enumerate(document.get("slides") or []):
         if "segment" in slide:
             spec = slide["segment"] or {}
-            current = {**base, **{k: spec[k] for k in SEGMENT_KEYS & BEHAVIOR if k in spec}}
+            current = {**base, **{k: spec[k] for k in SEGMENT_KEYS & BEHAVIOR & APPLIES[use] if k in spec}}
             if deck._unlimited(current["time_limit_s"]):
                 current["time_limit_s"] = None
             segment = {"at": at, "title": str(spec.get("title") or ""),
@@ -300,6 +318,9 @@ def _compile_work(document: dict, use: str) -> dict:
                            "markdown": str(slide["solution"] or ""), "at": at})
             continue
         block = activity.compile_item(slide["item"], at, current["time_limit_s"], current["block_paste"])
+        if use != "activity":                          # el debate solo existe en las actividades (W097)
+            for question in block["questions"]:
+                question.pop("debate", None)
         review = review or block.pop("_review")
         ai = ai or block.pop("_ai")
         total += block["points"]

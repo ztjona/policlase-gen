@@ -152,3 +152,38 @@ def test_el_titulo_del_item_se_compila():
     compiled = doc.compile_content(doc.load_text(text)[0])
     titles = [b.get("title") for b in compiled["items"] if b["kind"] == "item"]
     assert titles == ["Distribución del teclado", "", ""]
+
+
+def test_pregunta_de_debate():
+    text = SOURCE.replace("        - { id: q1, type: numeric, prompt: '2 + 2', solution: 4, grading: { atol: 0 } }",
+                          "        - { id: q1, type: numeric, prompt: '2 + 2', solution: 4, grading: { atol: 0 }, debate: true }")
+    document, report, _ = doc.load_text(text)
+    assert report.errors == [] and report.warnings == []
+    compiled = doc.compile_content(document)
+    flags = {q["key"]: q.get("debate") for b in compiled["items"] for q in b["questions"]}
+    assert flags["U00-fin.q1"] is True and flags["U00-barra.q1"] is None
+    evaluation = text.replace("use: activity", "use: evaluation")
+    document, report, _ = doc.load_text(evaluation)
+    assert [d.code for d in report] == ["W097"]
+    assert all("debate" not in q for b in doc.compile_content(document)["items"] for q in b["questions"])
+    assert "E085" in codes(text.replace("debate: true", "debate: 'sí'"))
+
+
+def test_el_debate_no_admite_preguntas_abiertas():
+    text = SOURCE.replace("        - { id: q1, type: numeric, prompt: '2 + 2', solution: 4, grading: { atol: 0 } }",
+                          "        - { id: q1, type: open, prompt: 'Explique', debate: true }")
+    assert "E098" in codes(text)
+
+
+def test_un_repaso_no_tiene_tiempo_ni_debate():
+    text = (SOURCE.replace("use: activity", "use: practice")
+            .replace("grading: { atol: 0 } }", "grading: { atol: 0 }, debate: true }"))
+    document, report, kind = doc.load_text(text)
+    assert kind == "practice" and report.errors == []
+    assert sorted(d.code for d in report.warnings) == ["W087", "W097"]     # el tiempo del segmento y el debate
+    compiled = doc.compile_content(document)
+    assert compiled["use"] == "practice"
+    questions = {q["key"]: q for b in compiled["items"] for q in b["questions"]}
+    assert questions["U00-barra.q1"]["time_limit_s"] is None
+    assert questions["U00-barra.q1"]["block_paste"] is True                # pegar sí se puede bloquear
+    assert "debate" not in questions["U00-fin.q1"]

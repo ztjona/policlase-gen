@@ -527,6 +527,24 @@ WebP, re-codificados sin metadatos; nunca SVG ni PDF).
 Preguntas anidadas que se muestran después de responder la de arriba. Sus `points` son propios y
 suman al total del ítem. Anidamiento máximo: un nivel.
 
+### Preguntas de debate (`debate`)
+
+`debate: true` en una pregunta de una actividad la vuelve **de debate**: el estudiante la responde
+con su justificación y, después de la fecha de entrega, discute las respuestas con sus compañeros
+(§10). Solo en actividades: en una clase o una evaluación se ignora con un aviso (`W097`). Admiten
+debate los tipos con una respuesta breve que se pueda mostrar: `choice`, `multi_choice`,
+`true_false`, `numeric`, `numeric_list`, `text` y `expression` (`E098` en `open` e `image`; `E085` si
+no es booleano). Conviene una o dos por actividad, en preguntas donde los errores frecuentes valga la
+pena discutirlos.
+
+```yaml
+- id: q1
+  type: choice
+  debate: true
+  prompt: '¿Qué método converge más rápido cerca de una raíz simple?'
+  options: [{ text: 'Bisección' }, { text: 'Newton-Raphson', correct: true }, { text: 'Punto fijo' }]
+```
+
 ### El registro de solución
 
 `build` separa cada variante en dos subárboles. El estudiante recibe `public`; el calificador
@@ -556,7 +574,7 @@ Dos propiedades que conviene no perder de vista:
 
 ## 9. Contenido: clases, actividades y evaluaciones
 
-Una clase en vivo, una actividad y una evaluación se escriben con **el mismo formato** y en el mismo
+Una clase en vivo, una actividad, una evaluación y un repaso se escriben con **el mismo formato** y en el mismo
 editor: una secuencia de diapositivas de contenido, ítems y **segmentos**. `use` dice para qué es el
 documento y pone los comportamientos por omisión; un segmento los cambia para lo que le sigue.
 
@@ -603,11 +621,11 @@ slides:
 |---|---|---|---|
 | `schema` | string | **requerido** | `policlase/v1`. |
 | `title` | string | **requerido** | Título que ven docente y estudiantes. |
-| `use` | `class` · `activity` · `evaluation` | **requerido** | Clase en vivo (pestaña Clases), actividad (pestaña Actividades) o evaluación (pestaña Evaluaciones). `E086` si es otro valor. |
+| `use` | `class` · `activity` · `evaluation` · `practice` | **requerido** | Clase en vivo (pestaña Clases), actividad (pestaña Actividades), evaluación o repaso (pestaña Evaluaciones). `E086` si es otro valor. |
 | `instructions` | string (markdown) | opcional | Indicaciones generales (actividades y evaluaciones). |
 | `slides` | array | **requerido** | Cada elemento tiene **exactamente una** de `markdown`, `item`, `segment` o `solution` (`E080`), y al menos uno es contenido o un ítem (`E004`). |
 | `slides[].markdown` | string | — | Contenido: markdown con matemáticas. En una actividad se lee entre los ítems. |
-| `slides[].solution` | string | — | Solución o explicación (markdown con matemáticas). En una actividad o evaluación, el estudiante **no la ve mientras responde**: aparece en la revisión, cuando vence la fecha de entrega (§10). En una clase en vivo se ignora con un aviso (`W096`). |
+| `slides[].solution` | string | — | Solución o explicación (markdown con matemáticas) **del ítem que la precede**. En una actividad o evaluación, el estudiante **no la ve mientras responde**: en la revisión, cuando vence la fecha de entrega, la abre con «Ver la explicación» junto a ese ítem (§10). En una clase en vivo se ignora con un aviso (`W096`). |
 | `slides[].item` | item | — | Un ítem ordinario (§5). En una clase, con las restricciones de abajo. |
 | `slides[].segment` | mapping | — | Cambia el comportamiento desde aquí hasta el próximo segmento: `title`, `instructions` y las claves de comportamiento. Cada segmento parte de lo del documento. |
 | `slides[].notes` | string | opcional | Notas para el docente. |
@@ -618,12 +636,12 @@ slides:
 diapositivas. `use` pone los valores por omisión. Una clave que no aplica al uso se ignora con un
 aviso (`W087`).
 
-| Clave | `class` | `activity` | `evaluation` | Qué hace |
-|---|---|---|---|---|
-| `time_limit_s` (5–600 o `null`) | `30` | `null` | `null` | En clase, la cuenta regresiva del proyector. En una actividad o evaluación, la pregunta se abre a pedido con su cuenta regresiva, se responde una sola vez y se cierra sola al acabarse el tiempo (`E084` fuera de rango). |
-| `block_paste` | — | `false` | `true` | Impide pegar texto en las respuestas. |
-| `speed_bonus` (solo raíz) | `true` | — | — | Bono por rapidez en el marcador (no en la nota). |
-| `feedback` (solo raíz) | `true` | — | — | Retroalimentación anónima al final de la clase. |
+| Clave | `class` | `activity` | `evaluation` | `practice` | Qué hace |
+|---|---|---|---|---|---|
+| `time_limit_s` (5–600 o `null`) | `30` | `null` | `null` | — | El tiempo de la pregunta. En clase, al acabarse sigue abierta hasta que el docente la cierra. En una actividad o evaluación, la pregunta se abre a pedido y se responde una sola vez. En ambos casos lo que se responde pasado el tiempo vale con una penalización (§10). `E084` fuera de rango. |
+| `block_paste` | — | `false` | `true` | `false` | Impide pegar texto en las respuestas. |
+| `speed_bonus` (solo raíz) | `true` | — | — | — | Bono por rapidez en el marcador (no en la nota). |
+| `feedback` (solo raíz) | `true` | — | — | — | Retroalimentación anónima al final de la clase. |
 
 En una clase, `item.lecture.time_limit_s` todavía manda sobre el segmento para esa pregunta.
 
@@ -755,6 +773,10 @@ Para que queden asentadas (implementación: `policlase/apps/activities/engine.py
   lo que tenga, como entrega a tiempo; una respuesta ilegible vale cero, como una en blanco. Si el
   docente mueve después la fecha hacia adelante, vuelve a ser borrador (salvo que ya lo haya
   calificado a mano).
+- **Repasos** (`use: practice`): para preparar una prueba. No tienen nota, ni tiempo (`time_limit_s`
+  se ignora con un aviso, `W087`), ni debate (`W097`), y se repiten cuantas veces se quiera. Cada
+  pregunta se comprueba al momento: queda con su corrección en ese intento y, cuando se comprobaron
+  todas las de un ítem, se abre su explicación (`solution`). Abren unos días antes de una fecha clave.
 - **Evaluaciones** (`use: evaluation`): un intento, sin entregas atrasadas, dentro de su horario y
   con el código que el docente proyecta en el aula. Si hay duración, cada estudiante la tiene desde
   que empieza, sin pasar del cierre; al acabarse, se envía con lo guardado. El estudiante no ve su
@@ -767,10 +789,22 @@ Para que queden asentadas (implementación: `policlase/apps/activities/engine.py
 - Una pregunta en blanco vale cero; una respuesta ilegible («uno coma cuatro» en una numérica) se
   devuelve para corregir antes de enviar.
 - **Preguntas con tiempo** (`time_limit_s` en un segmento, §9): no se ven hasta que el estudiante
-  las abre; desde ahí corre el reloj del servidor, se guardan mientras corre y se cierran solas al
-  acabarse (con unos segundos de gracia por la conexión). Se responden una sola vez en cada intento;
-  una que no se abrió vale cero.
+  las abre; desde ahí corre el reloj del servidor. Al acabarse (con unos segundos de gracia por la
+  conexión), siguen abiertas, pero lo que se responda después vale con la penalización por atraso
+  (30 % por omisión). Se responden una sola vez en cada intento; una que no se abrió vale cero. El
+  tiempo adicional de un estudiante con adecuación alarga el de cada pregunta.
 - **Encuestas:** se registran y no cuentan para la nota.
+- **Explicaciones:** cada diapositiva `solution` explica el ítem que la precede. En la revisión, el
+  estudiante ve primero su corrección y abre la explicación con «Ver la explicación».
+- **Preguntas de debate** (`debate: true`, §8): se responden con una justificación. Desde la fecha de
+  entrega hasta que el docente cierra el debate (o hasta la fecha que fije), cada una tiene su foro:
+  la respuesta y la justificación de cada estudiante, con su nombre, comentarios de un nivel y
+  «me gusta» públicos. Solo lee el foro quien ya no puede entregar con nota (lo contrario sería
+  responder con las respuestas de los compañeros a la vista); quien no entregó puede sumarse
+  publicando su postura. Durante el debate, cada estudiante puede publicar una respuesta revisada,
+  que no cambia su nota, y no se muestran ni la corrección de la pregunta ni la explicación de su
+  ítem: aparecen al cerrar el debate, como síntesis del docente. El docente puede ocultar lo que
+  no corresponda.
 - **Entregas atrasadas:** bloqueadas, o aceptadas con penalización (30 % por omisión) hasta el
   cierre del parcial, solo de quien no entregó a tiempo.
 - **Ponderación por parcial:** filas obligatorias que suman 100 % y opcionales que suman encima. La
@@ -821,7 +855,7 @@ iteración local. Los códigos `I` son informativos y nunca bloquean.
 | `E082` | error | Tipo de pregunta no respondible en vivo. |
 | `E083` | error | Aleatorización en una presentación (generador, variables o marcadores). |
 | `E084` | error | `time_limit_s` fuera de 5–600 segundos. |
-| `E085` | error | `hidden`, `feedback`, `speed_bonus` o `block_paste` no son booleanos. |
+| `E085` | error | `hidden`, `feedback`, `speed_bonus`, `block_paste` o `debate` no son booleanos. |
 | `E086` | error | `use` no es `class`, `activity` ni `evaluation`. |
 | `W087` | aviso | Un comportamiento que no aplica al uso del documento (se ignora). |
 | `E091` | error | `max_files` de una pregunta `image` fuera de 1–10. |
@@ -830,6 +864,8 @@ iteración local. Los códigos `I` son informativos y nunca bloquean.
 | `E094` | error | Una encuesta con `points` distinto de 0. |
 | `E095` | error | `grading.mode` que no existe para el tipo (`manual`/`ai` en `open` e `image`; `survey` en `choice` y `multi_choice`). |
 | `W096` | aviso | Una diapositiva `solution` en una clase en vivo (se ignora: las soluciones son de la revisión de actividades y evaluaciones). |
+| `W097` | aviso | Una pregunta de debate en una clase o una evaluación (se ignora: el debate es de las actividades). |
+| `E098` | error | Una pregunta `open` o `image` marcada como de debate. |
 
 Cada mensaje cita archivo, línea, `id` del ítem y, cuando aplica, la semilla que reprodujo el fallo
 —de modo que `policlase build --seed 47` lo reproduce de inmediato.
