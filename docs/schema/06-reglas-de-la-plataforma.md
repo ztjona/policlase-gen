@@ -29,8 +29,8 @@ Implementación: `policlase/apps/activities/engine.py` (intentos), `debate.py` (
 ## Revisión
 
 Desde que vence la fecha hasta su cierre, que decide el docente (sin límite, hasta una fecha
-relativa a una fecha clave —por ejemplo, el día de la prueba—, hasta una fecha fija, o sin
-revisión). Durante ella el estudiante ve su corrección detallada y las explicaciones; después, solo
+relativa a una fecha clave —por ejemplo, el día de la prueba—, hasta una fecha fija, en una
+evaluación hasta unos días después de publicar las notas, o sin revisión). Durante ella el estudiante ve su corrección detallada y las explicaciones; después, solo
 su puntaje. Quien no entregó las ve únicamente cuando ya no puede entregar: verlas antes sería
 responder con las soluciones a la vista.
 

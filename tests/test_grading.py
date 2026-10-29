@@ -20,6 +20,28 @@ def test_parse_number_acepta_ambos_separadores(text, expected):
     assert numbers.parse_number(text) == expected
 
 
+@pytest.mark.parametrize(
+    "text,expected",
+    [("1.5x10^-4", 1.5e-4), ("1,5×10^-4", 1.5e-4), ("1.5*10**-4", 1.5e-4), ("1.5 * 10^(-4)", 1.5e-4),
+     ("1.5·10^{-4}", 1.5e-4), ("-3.2X10^5", -3.2e5), ("10^-4", 1e-4), ("2^-15", 2 ** -15),
+     ("-2^3", -8.0), ("3.05*10**-5", 3.05e-5)],
+)
+def test_parse_number_acepta_potencias_escritas_a_mano(text, expected):
+    """Lo que escriben los estudiantes cuando no conocen la notación `1.5e-4`."""
+    assert numbers.parse_number(text) == expected
+
+
+@pytest.mark.parametrize("text", ["2^0.5", "1/3", "sqrt(2)", "10^", "1.5*10", "[3, 5]", "2^-99999", "0^-1"])
+def test_parse_number_no_evalua_expresiones(text):
+    with pytest.raises(numbers.ParseError):
+        numbers.parse_number(text)
+
+
+def test_el_error_dice_como_escribir_la_notacion_cientifica():
+    with pytest.raises(numbers.ParseError, match=r"1\.5e-4 o 1\.5\*10\^-4"):
+        numbers.parse_number("1.5 por 10 a la -4")
+
+
 def test_parse_number_rechaza_coma_cuando_se_exige_punto():
     with pytest.raises(numbers.ParseError):
         numbers.parse_number("4,23", decimal_input="point")

@@ -54,6 +54,12 @@ salvo `open` e `image`, una `solution`. El bloque `grading` cambia según el tip
 Se acepta si `|a − b| ≤ atol + rtol·|b|`. Debe tener `rtol` o `atol` (`E042`). Declarar solo `rtol`
 hace fallar toda respuesta cercana a cero: es el error más común al escribir tolerancias.
 
+**Lo que puede escribir el estudiante**, aquí y en cada casilla de `numeric_list`: un número con
+punto o coma decimal (según `decimal_input`), la notación `1.5e-4` y, como se escribe a mano,
+`1.5×10^-4`, `1.5x10^-4`, `1.5*10**-4`, `1.5*10^(-4)` o una potencia de base entera como `2^-15`.
+Nada se evalúa como expresión: `1/3` o `sqrt(2)` no son números (para eso está `expression`), y
+el mensaje de error muestra cómo escribir la notación científica.
+
 ### `numeric_list`
 
 Varios valores en una rejilla, una casilla por celda.

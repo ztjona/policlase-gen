@@ -11,6 +11,12 @@ from .result import Result
 DEFAULT_NAN_ALIASES = ("nan", "no existe", "no hay", "-", "—", "ninguna")
 
 _NUMBER = re.compile(r"^[+-]?(\d+([.,]\d*)?|[.,]\d+)([eE][+-]?\d+)?$")
+# Como se escribe a mano: `1.5×10^-4`, `1.5*10**-4`, `1.5x10^(-4)`, `10^{-4}`, `2^-15`. Base y
+# exponente enteros; nada se evalúa como expresión (para eso está el tipo `expression`).
+_EXPONENT = r"(?:\^|\*\*)\s*[({]?\s*([+-]?\d+)\s*[)}]?"
+_TIMES_POWER = re.compile(rf"^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*[x×*·]\s*(\d+)\s*{_EXPONENT}$", re.IGNORECASE)
+_POWER = re.compile(rf"^([+-]?)(\d+)\s*{_EXPONENT}$")
+_MAX_EXPONENT = 400
 
 
 class ParseError(ValueError):
@@ -49,11 +55,38 @@ def parse_number(text: Any, decimal_input: str = "both") -> float | None:
         raise ParseError("Use el punto como separador decimal.")
 
     if not _NUMBER.match(candidate):
-        raise ParseError(f"{raw!r} no es un número.")
+        value = _power(candidate, raw)
+        if value is None:
+            raise ParseError(f"{raw!r} no es un número. Para la notación científica escriba, por ejemplo, "
+                             "1.5e-4 o 1.5*10^-4.")
+        return value
     try:
         return float(candidate)
     except ValueError as exc:                     # pragma: no cover - lo cubre el regex
         raise ParseError(f"{raw!r} no es un número.") from exc
+
+
+def _power(candidate: str, raw: str) -> float | None:
+    """`1.5*10^-4`, `2^-15`…: el valor, o None si el texto no tiene esa forma."""
+    match = _TIMES_POWER.match(candidate)
+    if match:
+        mantissa, base, exponent = match.group(1), int(match.group(2)), int(match.group(3))
+    else:
+        match = _POWER.match(candidate)
+        if not match:
+            return None
+        mantissa, base, exponent = f"{match.group(1)}1", int(match.group(2)), int(match.group(3))
+    if abs(exponent) > _MAX_EXPONENT:
+        raise ParseError(f"{raw!r} está fuera del rango de los números que se pueden calcular.")
+    if base == 10:                                # exacto, como si se hubiera escrito 1.5e-4
+        return float(f"{mantissa}e{exponent}")
+    try:
+        value = float(mantissa) * float(base) ** exponent
+    except (OverflowError, ZeroDivisionError) as exc:
+        raise ParseError(f"{raw!r} está fuera del rango de los números que se pueden calcular.") from exc
+    if math.isinf(value):
+        raise ParseError(f"{raw!r} está fuera del rango de los números que se pueden calcular.")
+    return value
 
 
 def close(student: float | None, reference: float | None, grading: dict) -> bool:
