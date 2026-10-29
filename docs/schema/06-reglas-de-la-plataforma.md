@@ -97,7 +97,9 @@ conviene no referirse a otra parte por su posición («la parte anterior»).
 evaluación puede volver a resolverla completa, a su ritmo y en un solo intento, hasta el cierre de
 la revisión. Es una actividad aparte, con el mismo contenido y el mismo orden de partes, que cuenta
 en la fila de la ponderación que el docente elija (por lo general, una opcional). La revisión de la
-evaluación se le muestra al enviar la corrección; quien no la envía no la ve.
+evaluación se le muestra al enviar la corrección. Quien no quiere hacerla (por ejemplo, porque su
+nota ya es la que esperaba) puede omitirla, antes de empezarla, y ver la revisión de inmediato; la
+decisión no se deshace. Quien no la envía ni la omite no ve la revisión.
 
 ## Repasos (`use: practice`)
 
