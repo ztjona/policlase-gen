@@ -88,6 +88,17 @@ empieza, sin pasar del cierre; al acabarse, se envía con lo guardado. El reloj 
 consulta con «Ver tiempo restante» y avisa a los 10 y a los 2 minutos del final. El estudiante no
 ve su puntaje ni su corrección hasta que el docente publica las notas; la revisión empieza entonces.
 
+**Orden de las partes.** Si el docente lo activa, cada estudiante recibe las partes (lo que va de un
+segmento al siguiente) en su propio orden, fijo desde que empieza. Se mezclan partes enteras, nunca
+preguntas sueltas: el contenido y los ítems de una parte conservan su orden y su contexto. Por eso
+conviene no referirse a otra parte por su posición («la parte anterior»).
+
+**Corrección.** Si el docente la permite, al publicar las notas cada estudiante que rindió la
+evaluación puede volver a resolverla completa, a su ritmo y en un solo intento, hasta el cierre de
+la revisión. Es una actividad aparte, con el mismo contenido y el mismo orden de partes, que cuenta
+en la fila de la ponderación que el docente elija (por lo general, una opcional). La revisión de la
+evaluación se le muestra al enviar la corrección; quien no la envía no la ve.
+
 ## Repasos (`use: practice`)
 
 Para preparar una prueba: sin nota (no entran en ninguna fila de la ponderación), sin tiempo y con
